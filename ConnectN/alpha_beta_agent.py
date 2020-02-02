@@ -28,7 +28,9 @@ class AlphaBetaAgent(agent.Agent):
     #
     # NOTE: make sure the column is legal, or you'll lose the game.
     def go(self, brd):
-        (v, drop) = self.alpha_beta((brd, 0), 3, -math.inf, math.inf, True)
+        # think up to 7 moves ahead
+        d = min(6, brd.n + 2)
+        (v, drop) = self.alpha_beta((brd, 0), d, -math.inf, math.inf, True)
         print("VALUE", v, "MOVE", drop)
         return drop
 
@@ -60,142 +62,116 @@ class AlphaBetaAgent(agent.Agent):
                 if alpha >= beta:
                     break 
         return (v, col)
+    
+    def playable_chain_single(self, brd, row, col, drow, dcol, target):
+        # iterate in the dx, dy direction and find a chain (if any)
+        cur_row = row
+        cur_col = col
+        blank_traverse = False
+        bt_pc = 0
+        pc = 0
+        i = 0
+        while cur_row < brd.h and cur_col < brd.w and i < brd.n:
+            val = brd.board[cur_row][cur_col]
+            if val == target:
+                if blank_traverse:
+                    # add blank traversal to total
+                    # don't reset the variable because double blanks aren't allowed
+                    pc += bt_pc
+                    bt_pc = 0
+                pc += 1
+            elif val == 0:
+                if blank_traverse:
+                    # double blank, done
+                    break
+                # blank spot in the chain
+                # first check if there is a supporting piece below
+                if cur_row - 1 > 0 and brd.board[cur_row - 1][cur_col] == 0:
+                    # there isn't, stop counting pieces
+                    break
+                # trigger the blank_traverse
+                # before we start traversing blanks
+                # save to temporary variable that will only
+                # get copied over if this is connected past a blank
+                blank_traverse = True
+                bt_pc += 1
+                # we have to get back to a target in order to 
+                # keep the blank traverse spots
+            else:
+                # if we encounter another player's piece
+                # then this is not a viable chain
+                return 0
+            cur_row += drow
+            cur_col += dcol
+            i += 1
+        return pc
 
     def playable_chain(self, brd, target):
-        y = -1
-        longest_chain = 0
-        longest_playable_chain = 0
-        zero_counter = 0
-        for row in brd.board:
-            y = y + 1
-            if (y >= brd.h):
+        check_cols = [i for i in range(0, brd.w)]
+        max_pc = 0
+        for row in range(brd.h):
+            if len(check_cols) == 0:
                 break
-            zero_counter = 0
-            for x in range(len(row)):
-                #Increment blank row counter and check for max blank row
-                if (x >= brd.w):
-                    break
-                if brd.board[y][x] == 0:
-                    zero_counter = zero_counter + 1
-                    if zero_counter >= brd.w:
-                        break
-                if target == brd.board[y][x]:
-                    start_x = x
-                    start_y = y
-                    # Check up
-                    longest_chain = 0
-                    while brd.board[y][x] == target:
-                        longest_chain = longest_chain + 1
-                        y = y + 1
-                        if (y >= brd.h or y < 0 or x >= brd.w or x < 0):
-                            break
-                        if (y - 1 < 0):
-                            if brd.board[y][x] == 0:
-                                if longest_chain > longest_playable_chain:
-                                    longest_playable_chain = longest_chain
-                                    break
-                        else:
-                            if brd.board[y][x] == 0 and brd.board[y-1][x] != 0:
-                                if longest_chain > longest_playable_chain:
-                                    longest_playable_chain = longest_chain
-                                    break
-                    # Reset to curr token
-                    x = start_x
-                    y = start_y
-                    longest_chain = 0
-                    # Check right
-                    while brd.board[y][x] == target:
-                        longest_chain = longest_chain + 1
-                        x = x + 1
-                        if (y >= brd.h or y < 0 or x >= brd.w or x < 0):
-                            break
-                        if (y - 1 < 0):
-                            if brd.board[y][x] == 0:
-                                if longest_chain > longest_playable_chain:
-                                    longest_playable_chain = longest_chain
-                                    break
-                        else:
-                            if brd.board[y][x] == 0 and brd.board[y-1][x] != 0:
-                                if longest_chain > longest_playable_chain:
-                                    longest_playable_chain = longest_chain
-                                    break
-                    # Reset to curr token
-                    x = start_x
-                    y = start_y
-                    longest_chain = 0
-                    # Check diag right
-                    while brd.board[y][x] == target:
-                        longest_chain = longest_chain + 1
-                        x = x + 1
-                        y = y + 1
-                        if (y >= brd.h or y < 0 or x >= brd.w or x < 0):
-                            break
-                        if (y - 1 < 0):
-                            if brd.board[y][x] == 0:
-                                if longest_chain > longest_playable_chain:
-                                    longest_playable_chain = longest_chain
-                                    break
-                        else:
-                            if brd.board[y][x] == 0 and brd.board[y-1][x] != 0:
-                                if longest_chain > longest_playable_chain:
-                                    longest_playable_chain = longest_chain
-                                    break
-                    # Reset to curr token
-                    x = start_x
-                    y = start_y
-                    longest_chain = 0
-                    # Check diag left
-                    while brd.board[y][x] == target:
-                        longest_chain = longest_chain + 1
-                        x = x - 1
-                        y = y + 1
-                        if (y >= brd.h or y < 0 or x >= brd.w or x < 0):
-                            break
-                        if (y - 1 < 0):
-                            if brd.board[y][x] == 0:
-                                if longest_chain > longest_playable_chain:
-                                    longest_playable_chain = longest_chain
-                                    break
-                        else:
-                            if brd.board[y][x] == 0 and brd.board[y-1][x] != 0:
-                                if longest_chain > longest_playable_chain:
-                                    longest_playable_chain = longest_chain
-                                    break
-                    x = start_x
-                    y = start_y
-                    longest_chain = 0
-                    # Check left
-                    while brd.board[y][x] == target:
-                        x = x - 1
-                        longest_chain = longest_chain + 1
-                        if (y >= brd.h or y < 0 or x >= brd.w or x < 0):
-                            break
-                        if (y - 1 < 0):
-                            if brd.board[y][x] == 0:
-                                if longest_chain > longest_playable_chain:
-                                    longest_playable_chain = longest_chain
-                                    break
-                        else:
-                            if brd.board[y][x] == 0 and brd.board[y-1][x] != 0:
-                                if longest_chain > longest_playable_chain:
-                                    longest_playable_chain = longest_chain
-                                    break
+            new_check_cols = []
+            for col in check_cols:
+                val = brd.board[row][col]
+                # check on next iteration if it isn't a blank spot
+                if val != 0:
+                    new_check_cols.append(col)
+                if val != target:
+                    continue
+                # check for max playable chain
+                # check up, right, left, upper diag
+                check_types = [[1,0],[0,1],[0,-1],[1,1]]
+                close_top = row > brd.h - brd.n
+                close_right = col > brd.w - brd.n
+                if close_top and close_right:
+                    # if we are close on the top and the right
+                    # just check left
+                    check_types = [[0,-1]]
+                elif close_right:
+                    # if we are too close to the right wall
+                    # check up, left
+                    check_types = [[1,0],[0,-1]]
+                elif close_top:
+                    # only check lower diag if we
+                    # are too high for everything else
+                    check_types = [[-1,1]]
+                for drow, dcol in check_types:
+                    max_pc = max(max_pc, 
+                        self.playable_chain_single(brd, row, 
+                                                   col, drow, dcol, target))
+                    # if value is n, then nothing can be better, return
+                    if max_pc == brd.n:
+                        return max_pc
+            check_cols = new_check_cols
+        return max_pc
+    
+    def pc_weighted(self, brd, target):
+        chain = self.playable_chain(brd, target)
+        """if chain >= brd.n and target == 1:
+            return math.inf"""
+        # take the exponent of the chain value
+        # in order to make longer chains more desirable/undesirable
+        # to the AI then they otherwise would be
+        chain = math.exp(chain)
+        return chain
 
-        return longest_playable_chain
 
     def heuristic(self, brd_tuple):
         # brd_tuple is (board state, column where last token was added)
         # return either an approximation of the value of moving to this board state
         # -inf if this will cause the minimizing player to win and
         # inf if the maximizing player will win
-        olpc = self.playable_chain(brd_tuple[0], 2)
-        xlpc = self.playable_chain(brd_tuple[0], 1)
-        h = olpc - (3*xlpc)
-        print("CHAIN FOR 1:", self.playable_chain(brd_tuple[0], 1),
+        olpc = self.pc_weighted(brd_tuple[0], 2)
+        xlpc = self.pc_weighted(brd_tuple[0], 1)
+        h = olpc - (2*xlpc)
+        
+        """print("CHAIN FOR 1:", self.playable_chain(brd_tuple[0], 1),
         "CHAIN FOR 2:" , self.playable_chain(brd_tuple[0], 2))
         brd_tuple[0].print_it()
         print(h, brd_tuple[1])
-        print("----")
+        print("----")"""
         return (h, brd_tuple[1])
 
     # Get the successors of the given board.
