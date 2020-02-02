@@ -28,8 +28,8 @@ class AlphaBetaAgent(agent.Agent):
     #
     # NOTE: make sure the column is legal, or you'll lose the game.
     def go(self, brd):
-        # think up to 7 moves ahead
-        d = min(6, brd.n + 2)
+        # think up to 6 moves ahead
+        d = min(6, brd.n + 1)
         (v, drop) = self.alpha_beta((brd, 0), d, -math.inf, math.inf, True)
         print("VALUE", v, "MOVE", drop)
         return drop
@@ -94,7 +94,7 @@ class AlphaBetaAgent(agent.Agent):
                 # save to temporary variable that will only
                 # get copied over if this is connected past a blank
                 blank_traverse = True
-                bt_pc += 1
+                bt_pc += 0.5
                 # we have to get back to a target in order to 
                 # keep the blank traverse spots
             else:
@@ -107,6 +107,8 @@ class AlphaBetaAgent(agent.Agent):
         return pc
 
     def playable_chain(self, brd, target):
+        go_up = [1,0]; go_right = [0,1]; go_left = [0,-1]
+        go_diag_top = [1,1]; go_diag_bottom = [-1,1]
         check_cols = [i for i in range(0, brd.w)]
         max_pc = 0
         for row in range(brd.h):
@@ -121,29 +123,28 @@ class AlphaBetaAgent(agent.Agent):
                 if val != target:
                     continue
                 # check for max playable chain
-                # check up, right, left, upper diag
-                check_types = [[1,0],[0,1],[0,-1],[1,1]]
+                check_types = []
+                # measurements away from the wall
                 close_top = row > brd.h - brd.n
                 close_right = col > brd.w - brd.n
-                if close_top and close_right:
-                    # if we are close on the top and the right
-                    # just check left
-                    check_types = [[0,-1]]
-                elif close_right:
-                    # if we are too close to the right wall
-                    # check up, left
-                    check_types = [[1,0],[0,-1]]
-                elif close_top:
-                    # only check lower diag if we
-                    # are too high for everything else
-                    check_types = [[-1,1]]
+                close_left = col < brd.n
+                if not close_top:
+                    # if close top is false, up is possible
+                    check_types.append(go_up)
+                if not close_left:
+                    check_types.append(go_left)
+                if not close_right:
+                    check_types.append(go_right)
+                    # must be close right for diagonals
+                    # to work
+                    if close_top:
+                        check_types.append(go_diag_bottom)
+                    else:
+                        check_types.append(go_diag_top)
                 for drow, dcol in check_types:
                     max_pc = max(max_pc, 
                         self.playable_chain_single(brd, row, 
                                                    col, drow, dcol, target))
-                    # if value is n, then nothing can be better, return
-                    if max_pc == brd.n:
-                        return max_pc
             check_cols = new_check_cols
         return max_pc
     
@@ -165,7 +166,7 @@ class AlphaBetaAgent(agent.Agent):
         # inf if the maximizing player will win
         olpc = self.pc_weighted(brd_tuple[0], 2)
         xlpc = self.pc_weighted(brd_tuple[0], 1)
-        h = olpc - (2*xlpc)
+        h = olpc - (3*xlpc)
         
         """print("CHAIN FOR 1:", self.playable_chain(brd_tuple[0], 1),
         "CHAIN FOR 2:" , self.playable_chain(brd_tuple[0], 2))
