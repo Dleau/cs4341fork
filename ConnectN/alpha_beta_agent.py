@@ -48,7 +48,9 @@ class AlphaBetaAgent(agent.Agent):
         if is_max_player:
             v = -math.inf
             for child in self.get_successors(brd):
-                (n_v, col) = self.alpha_beta(child, depth - 1, alpha, beta, False)
+                (n_v, cur_col) = self.alpha_beta(child, depth - 1, alpha, beta, False)
+                if n_v > v or math.isnan(col):
+                    col = cur_col
                 v = max(v, n_v)
                 alpha = max(alpha, v)
                 if alpha >= beta:
@@ -56,13 +58,15 @@ class AlphaBetaAgent(agent.Agent):
         else:
             v = math.inf
             for child in self.get_successors(brd):
-                (n_v, col) = self.alpha_beta(child, depth - 1, alpha, beta, True)
+                (n_v, cur_col) = self.alpha_beta(child, depth - 1, alpha, beta, True)
+                if n_v < v or math.isnan(col):
+                    col = cur_col
                 v = min(v, n_v)
                 beta = min(beta, v)
                 if alpha >= beta:
-                    break 
+                    break
         return (v, col)
-    
+
     def playable_chain_single(self, brd, row, col, drow, dcol, target):
         # iterate in the dx, dy direction and find a chain (if any)
         cur_row = row
@@ -167,12 +171,12 @@ class AlphaBetaAgent(agent.Agent):
         olpc = self.pc_weighted(brd_tuple[0], 2)
         xlpc = self.pc_weighted(brd_tuple[0], 1)
         h = olpc - (3*xlpc)
-        
-        """print("CHAIN FOR 1:", self.playable_chain(brd_tuple[0], 1),
+
+        print("CHAIN FOR 1:", self.playable_chain(brd_tuple[0], 1),
         "CHAIN FOR 2:" , self.playable_chain(brd_tuple[0], 2))
         brd_tuple[0].print_it()
         print(h, brd_tuple[1])
-        print("----")"""
+        print("----")
         return (h, brd_tuple[1])
 
     # Get the successors of the given board.
