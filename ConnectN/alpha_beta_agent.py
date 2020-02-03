@@ -30,9 +30,9 @@ class AlphaBetaAgent(agent.Agent):
     def go(self, brd):
         # think up to 6 moves ahead
         d = min(6, brd.n + 1)
-        (v, drop) = self.alpha_beta((brd, 0), d, -math.inf, math.inf, True)
-        print("VALUE", v, "MOVE", drop)
-        return drop
+        (v, move) = self.alpha_beta((brd, 0), d, -math.inf, math.inf, True)
+        print("VALUE", v, "MOVES", move)
+        return move
 
     def alpha_beta(self, brd_tuple, depth, alpha, beta, is_max_player):
         brd = brd_tuple[0]
@@ -48,9 +48,9 @@ class AlphaBetaAgent(agent.Agent):
         if is_max_player:
             v = -math.inf
             for child in self.get_successors(brd):
-                (n_v, cur_col) = self.alpha_beta(child, depth - 1, alpha, beta, False)
+                (n_v, _) = self.alpha_beta(child, depth - 1, alpha, beta, False)
                 if n_v > v or math.isnan(col):
-                    col = cur_col
+                    col = child[1]
                 v = max(v, n_v)
                 alpha = max(alpha, v)
                 if alpha >= beta:
@@ -58,9 +58,9 @@ class AlphaBetaAgent(agent.Agent):
         else:
             v = math.inf
             for child in self.get_successors(brd):
-                (n_v, cur_col) = self.alpha_beta(child, depth - 1, alpha, beta, True)
+                (n_v, _) = self.alpha_beta(child, depth - 1, alpha, beta, True)
                 if n_v < v or math.isnan(col):
-                    col = cur_col
+                    col = child[1]
                 v = min(v, n_v)
                 beta = min(beta, v)
                 if alpha >= beta:
