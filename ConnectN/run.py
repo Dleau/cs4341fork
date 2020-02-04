@@ -27,24 +27,23 @@ random.seed(1)
 #
 # Random vs. AlphaBeta
 #
-'''
 g = game.Game(7, # width
-               6, # height
+              6, # height
                4, # tokens in a row to win
                agent.RandomAgent("random"),        # player 1
                aba.AlphaBetaAgent("alphabeta", 4)) # player 2
-'''
 
 
 #
 # Human vs. AlphaBeta
 #
+'''
 g = game.Game(7, # width
               6, # height
               4, # tokens in a row to win
               agent.InteractiveAgent("human"),    # player 1
               aba.AlphaBetaAgent("alphabeta", 4)) # player 2
-
+'''
 #
 # Human vs. Human
 #

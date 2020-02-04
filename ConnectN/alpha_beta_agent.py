@@ -29,7 +29,7 @@ class AlphaBetaAgent(agent.Agent):
     # NOTE: make sure the column is legal, or you'll lose the game.
     def go(self, brd):
         # think up to 6 moves ahead
-        d = min(6, brd.n + 1)
+        d = min(8, brd.n + 1)
         (v, move) = self.alpha_beta((brd, 0), d, -math.inf, math.inf, True)
         print("VALUE", v, "MOVES", move)
         return move
