@@ -27,13 +27,13 @@ random.seed(1)
 #
 # Random vs. AlphaBeta
 #
-"""
+'''
 g = game.Game(7, # width
                6, # height
                4, # tokens in a row to win
                agent.RandomAgent("random"),        # player 1
                aba.AlphaBetaAgent("alphabeta", 4)) # player 2
-"""
+'''
 
 #
 # Human vs. AlphaBeta
@@ -52,6 +52,17 @@ g = game.Game(7, # width
 #               4, # tokens in a row to win
 #               agent.InteractiveAgent("human1"),   # player 1
 #               agent.InteractiveAgent("human2"))   # player 2
+
+
+# Jacked AI vs. Jacked AI
+'''
+g = game.Game(
+        7, # width
+        6, # height
+        4, # tokens in a row to win
+        aba.AlphaBetaAgent("jackedAI1", 4), # player 1
+        aba.AlphaBetaAgent("jackedAI2", 4)) # player 2
+'''
 
 # Execute the game
 outcome = g.go()
