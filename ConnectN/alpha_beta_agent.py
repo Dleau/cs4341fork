@@ -81,9 +81,9 @@ class AlphaBetaAgent(agent.Agent):
         # set r and c pre-traversal
         r, c = row + drow, col + dcol
         # store length of playable chain
-        length = 1
+        length = 0 #FIXME should this start at 0?
         # verify that row,col cursor is still on the board
-        while r in range(row + drow, brd.h) and c in range(col + dcol, brd.w):
+        while r in range(0, brd.h) and c in range(0, brd.w):
             # print(r, c, brd.board[r][c])
             # verify that r,c cursor is on target
             if brd.board[r][c] != target:
@@ -283,12 +283,17 @@ class AlphaBetaAgent(agent.Agent):
 testing with boards
     def playable_chain_single(self, brd, row, col, drow, dcol, target):
 '''
-# NOTE I haven't tested w/ n x m boards
+# board = board.Board([[1,1,1,1],[0,2,2,2],[0,0,1,1],[0,0,1,0]], 4, 4, 4)
 '''
-board = board.Board([[1,1,1,1],[0,2,2,2],[0,0,1,1],[0,0,1,0]], 4, 4, 4)
+board = board.Board([   [2,1,0,0,1,0,1],
+                        [2,0,0,0,0,0,2],
+                        [1,0,0,0,0,0,2],
+                        [1,0,0,0,0,0,2],
+                        [0,0,0,0,0,0,0],
+                        [0,0,0,0,0,0,0] ], 7, 6, 4)
 board.print_it()
 
 #r = AlphaBetaAgent(None, None).playable_chain_single(board, 0, 1, 0, 1, 1)
-r = AlphaBetaAgent(None, None).playable_chain(board, 1)
+r = AlphaBetaAgent(None, None).playable_chain(board, 2)
 print(r)
 '''
