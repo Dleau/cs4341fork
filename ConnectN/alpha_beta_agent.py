@@ -1,6 +1,6 @@
 import math
 import agent
-
+#import board
 
 import sys
 
@@ -68,6 +68,38 @@ class AlphaBetaAgent(agent.Agent):
         return (v, col)
 
     def playable_chain_single(self, brd, row, col, drow, dcol, target):
+        '''
+        @author Dillon (just working through this)
+        brd as game board
+        row as root row coordinate
+        col as root column coordinate
+        drow as delta row
+        dcol as delta col
+        target as 1 or 2 denoting player
+        returns the length of the chain
+        '''
+        # set r and c pre-traversal
+        r, c = row + drow, col + dcol
+        # store length of playable chain
+        length = 1
+        # verify that row,col cursor is still on the board
+        while r in range(row + drow, brd.h) and c in range(col + dcol, brd.w):
+            # print(r, c, brd.board[r][c])
+            # verify that r,c cursor is on target
+            if brd.board[r][c] != target:
+                #print('no') # NOTE
+                return length
+            # increment chain length
+            length += 1
+            # return n if length is equal to n
+            if length == brd.n:
+                return length
+            # apply row and column deltas
+            r += drow
+            c += dcol
+        # we went off the board, give what we have
+        return length
+        ''' @author Ray
         # iterate in the dx, dy direction and find a chain (if any)
         cur_row = row
         cur_col = col
@@ -99,7 +131,7 @@ class AlphaBetaAgent(agent.Agent):
                 # get copied over if this is connected past a blank
                 blank_traverse = True
                 bt_pc += 0.5
-                # we have to get back to a target in order to 
+                # we have to get back to a target in order to
                 # keep the blank traverse spots
             else:
                 # if we encounter another player's piece
@@ -109,8 +141,47 @@ class AlphaBetaAgent(agent.Agent):
             cur_col += dcol
             i += 1
         return pc
+        '''
 
     def playable_chain(self, brd, target):
+        '''@author Dillon
+        brd as game board
+        target as 1 or 2 for player
+        returns the longest! playable chain for a target
+        '''
+        # keep maximum chain length
+        max_length = 0
+        # iterate across columns
+        for c in range(0, brd.w):
+            # assume playable cell at 0,c
+            r = 0
+            # find the playable, empty cell in this column
+            while r in range(0, brd.h) and brd.board[r][c] != 0:
+                r += 1
+            # continue through column if height was reached
+            if r == brd.h:
+                continue
+            # define directions NOTE look into necessary directions
+            directions = [
+                    (0, 1), # north
+                    (1, 1), # northeast
+                    (1, 0), # east
+                    (1, -1), # southeast
+                    (0, -1), # south
+                    (-1, -1), # southwest
+                    (-1, 0), # west
+                    (-1, 1),] # northwest
+            # iterate through directions
+            for drow, dcol in directions:
+                # find chain length in this direction
+                length = self.playable_chain_single(brd, r, c, drow, dcol, target)
+                # print('(%d,%d) (%d,%d), target %d -> %d' % (c, r, dcol, drow, target, length))
+                # adjust maximum if warranted
+                if length > max_length:
+                    max_length = length
+        # the longest chain found from any playable cell in any direction
+        return max_length
+        '''@author Ray
         go_up = [1,0]; go_right = [0,1]; go_left = [0,-1]
         go_diag_top = [1,1]; go_diag_bottom = [-1,1]
         check_cols = [i for i in range(0, brd.w)]
@@ -146,12 +217,13 @@ class AlphaBetaAgent(agent.Agent):
                     else:
                         check_types.append(go_diag_top)
                 for drow, dcol in check_types:
-                    max_pc = max(max_pc, 
-                        self.playable_chain_single(brd, row, 
+                    max_pc = max(max_pc,
+                        self.playable_chain_single(brd, row,
                                                    col, drow, dcol, target))
             check_cols = new_check_cols
         return max_pc
-    
+        '''
+
     def pc_weighted(self, brd, target):
         chain = self.playable_chain(brd, target)
         """if chain >= brd.n and target == 1:
@@ -203,3 +275,20 @@ class AlphaBetaAgent(agent.Agent):
             # Add board to list of successors
             succ.append((nb,col))
         return succ
+
+
+
+'''
+@author Dillon
+testing with boards
+    def playable_chain_single(self, brd, row, col, drow, dcol, target):
+'''
+# NOTE I haven't tested w/ n x m boards
+'''
+board = board.Board([[1,1,1,1],[0,2,2,2],[0,0,1,1],[0,0,1,0]], 4, 4, 4)
+board.print_it()
+
+#r = AlphaBetaAgent(None, None).playable_chain_single(board, 0, 1, 0, 1, 1)
+r = AlphaBetaAgent(None, None).playable_chain(board, 1)
+print(r)
+'''
