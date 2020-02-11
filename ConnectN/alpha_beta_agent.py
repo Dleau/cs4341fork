@@ -1,7 +1,7 @@
 import math
 import agent
 import hashlib
-#import board
+import board
 
 import sys
 
@@ -35,9 +35,12 @@ class AlphaBetaAgent(agent.Agent):
             self.min_player = 2
         else:
             self.min_player = 1
-        d = 8
-        (v, move) = self.alpha_beta((brd, 0), d, -math.inf, math.inf, True)
-        print("DEPTH", d, "VALUE", v, "MOVE", move)
+        if brd.n > 4:
+            self.max_depth = 7
+        else:
+            self.max_depth = 9
+        (v, move) = self.alpha_beta((brd, 0), self.max_depth, -math.inf, math.inf, True)
+        print("DEPTH", self.max_depth, "VALUE", v, "MOVE", move)
         return move
     
     def alpha_beta_helper(self, child, depth, alpha, beta, is_max_player):
@@ -96,6 +99,7 @@ class AlphaBetaAgent(agent.Agent):
         returns the length of the chain
         '''
         # set r and c pre-traversal
+        #r, c = row + drow, col + dcol
         r, c = row + drow, col + dcol
         # store length of playable chain
         length = 0 #FIXME should this start at 0?
@@ -123,8 +127,43 @@ class AlphaBetaAgent(agent.Agent):
         target as 1 or 2 for player
         returns the longest! playable chain for a target
         '''
-        # keep maximum chain length
-        #max_length = 0
+        
+        # keep all chains
+        chains = []
+        # columns to look through (not found to be empty)
+        cols = list(range(0, brd.w))
+        new_cols = cols
+        # iterate row first
+        for r in range(0, brd.h):
+            if len(new_cols) == 0:
+                break
+            new_cols = []
+            for c in cols:
+                if brd.board[r][c] != 0:
+                    new_cols.append(c)
+                    continue
+                # define directions
+                directions = [
+                        (1, 0), # north
+                        (1, 1), # northeast
+                        (0, 1), # east
+                        (-1, 1), # southeast
+                        (-1, 0), # south
+                        (-1, -1), # southwest
+                        (0, -1), # west
+                        (1, -1)] # northwest
+                # iterate through directions
+                for drow, dcol in directions:
+                    # find chain length in this direction
+                    length = self.playable_chain_single(brd, r, c, drow, dcol, target)
+                    # print('(%d,%d) (%d,%d), target %d -> %d' % (c, r, dcol, drow, target, length))
+                    # if there is a chain, put it into the array
+                    if length > 0:
+                        chains.append(length)
+        # all the chains found
+        return chains
+        """
+        # keep all chains
         chains = []
         # iterate across columns
         for c in range(0, brd.w):
@@ -145,33 +184,109 @@ class AlphaBetaAgent(agent.Agent):
                     (0, -1), # south
                     (-1, -1), # southwest
                     (-1, 0), # west
-                    (-1, 1),] # northwest
+                    (-1, 1)] # northwest
             # iterate through directions
             for drow, dcol in directions:
                 # find chain length in this direction
                 length = self.playable_chain_single(brd, r, c, drow, dcol, target)
                 # print('(%d,%d) (%d,%d), target %d -> %d' % (c, r, dcol, drow, target, length))
-                # adjust maximum if warranted
-                """if length > max_length:
-                    max_length = length"""
+                # if there is a chain, put it into the array
                 if length > 0:
-                    # Instead of the maximum, save all the playable chains we have
                     chains.append(length)
         # all the chains found
         return chains
+        """
+    
+    def check_path(self, brd, dr, dc, r, c, target):
+        board = brd.board
+        blanks = 0
+        length = 0
+        #print("---", (dr, dc), "---")
+        # A line consists of target pieces followed by a blank spot
+        # keep going in the direction until we hit
+        # the end of the board or the length runs out
+        while c in range(0, brd.w) and r in range(0, brd.h) and length < brd.n:
+            cur_val = board[r][c]
+            if cur_val != target:
+                if cur_val == 0:
+                    if blanks > 0:
+                        # we have already seen a blank and 
+                        # there's another, traversal over
+                        length -= blanks # blank space no longer counts
+                        break
+                    elif ((r+dr) not in range(0, brd.h) or 
+                        (c+dc) not in range(0, brd.w)):
+                        # there's a blank but there's also a wall after
+                        # so break now
+                        break
+                    else:
+                        # innocuous blank space, increment blank counter
+                        blanks += 1
+                        length += 1
+                else:
+                    # something is in the way, not viable
+                    return False
+            else:
+                # found a piece
+                length += 1
+            if r > 0 and board[r-1][c] == 0:
+                # not resting on anything
+                return False
+            #print(cur_val)
+            # increment in the correct direction
+            r += dr
+            c += dc
+        #print("---", length, "---")
+        return length == brd.n
+
+    def winning_moves(self, brd, target):
+        directions = [
+            (1, 0), # north
+            (1, 1), # northeast
+            (0, 1), # east
+            (-1, 1)] # southeast
+        winning_moves = 0
+        cols = list(range(0, brd.w))
+        # iterate columns then rows
+        # stop after a column is white
+        for r in range(0, brd.h):
+            for c in cols:
+                new_cols = []
+                for dr, dc in directions:
+                    if self.check_path(brd, dr, dc, r, c, target):
+                        winning_moves += 1
+                        cols.append(c)
+                cols = new_cols
+        return winning_moves
 
     def pc_weighted(self, brd, target):
+        """
         chains = sorted(self.playable_chain(brd, target), reverse=True)
         score = 0
         # if there are two directly winning positions, then the game is over
         if len(chains) >= 2 and chains[0] == chains[1] and chains[0] == brd.n - 1:
             return math.inf
+        # othwerwise return the number of chains that are about to win
         for chain in chains:
-            # take the exponent of the chain value
-            # in order to make longer chains more desirable/undesirable
-            # to the AI then they otherwise would be
-            score += math.exp(chain)
+            if chain < brd.n - 1:
+                break
+            score += chain
         return score
+        """
+        score = self.winning_moves(brd, target)
+        # if there are two directly winning positions, then the game is over
+        if score >= 2:
+            return math.inf
+        return score
+    
+    def free_pos(self, brd):
+        """ Returns the count of all free board positions """
+        cnt = 0
+        for r in brd.board:
+            for elem in r:
+                if elem == 0:
+                    cnt += 1
+        return cnt
 
 
     def heuristic(self, brd_tuple):
@@ -181,7 +296,8 @@ class AlphaBetaAgent(agent.Agent):
         # inf if the maximizing player will win
         olpc = self.pc_weighted(brd_tuple[0], self.max_player)
         xlpc = self.pc_weighted(brd_tuple[0], self.min_player)
-        h = olpc - xlpc
+        free = self.free_pos(brd_tuple[0])
+        h = olpc - xlpc + (free / (10**len(str(free))))
         """
         print("CHAIN FOR 1:", self.playable_chain(brd_tuple[0], 1),
         "CHAIN FOR 2:" , self.playable_chain(brd_tuple[0], 2))
@@ -245,17 +361,26 @@ class AlphaBetaAgent(agent.Agent):
 testing with boards
     def playable_chain_single(self, brd, row, col, drow, dcol, target):
 '''
-# board = board.Board([[1,1,1,1],[0,2,2,2],[0,0,1,1],[0,0,1,0]], 4, 4, 4)
+#board = board.Board([[1,1,1,1],[0,2,2,2],[0,0,1,1],[0,0,1,0]], 4, 4, 4)
 '''
-board = board.Board([   [2,1,0,0,1,0,1],
-                        [2,0,0,0,0,0,2],
+board = board.Board([   [2,1,1,0,1,0,1],
+                        [2,2,2,0,0,0,2],
                         [1,0,0,0,0,0,2],
                         [1,0,0,0,0,0,2],
+                        [0,0,0,0,0,0,0],
+                        [0,0,0,0,0,0,0] ], 7, 6, 4)
+'''
+
+'''
+board = board.Board([   [2,1,1,1,0,0,0],
+                        [1,2,1,1,0,0,0],
+                        [1,1,2,1,0,0,0],
+                        [0,2,2,0,0,0,0],
                         [0,0,0,0,0,0,0],
                         [0,0,0,0,0,0,0] ], 7, 6, 4)
 board.print_it()
 
 #r = AlphaBetaAgent(None, None).playable_chain_single(board, 0, 1, 0, 1, 1)
-r = AlphaBetaAgent(None, None).playable_chain(board, 2)
+r = AlphaBetaAgent(None, None).winning_moves(board, 1)
 print(r)
 '''
