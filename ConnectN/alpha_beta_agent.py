@@ -21,7 +21,7 @@ class AlphaBetaAgent(agent.Agent):
         super().__init__(name)
         # Max search depth
         self.max_depth = max_depth
-        self.trans_table = {}
+        #self.trans_table = {}
 
     # Pick a column.
     #
@@ -30,15 +30,17 @@ class AlphaBetaAgent(agent.Agent):
     #
     # NOTE: make sure the column is legal, or you'll lose the game.
     def go(self, brd):
+        self.trans_table = {}
         self.max_player = brd.player
         if self.max_player == 1:
             self.min_player = 2
         else:
             self.min_player = 1
-        if brd.n > 4:
+        if brd.w > 7:
             self.max_depth = 7
         else:
-            self.max_depth = 9
+            self.max_depth = 8
+        free_left = self.free_pos(brd)
         (v, move) = self.alpha_beta((brd, 0), self.max_depth, -math.inf, math.inf, True)
         print(len(self.trans_table))
         print("DEPTH", self.max_depth, "VALUE", v, "MOVE", move)
@@ -61,9 +63,9 @@ class AlphaBetaAgent(agent.Agent):
         v = math.nan
         col = math.nan
         if depth == 0 or outcome != 0:
-            if outcome == 1:
+            if outcome == self.min_player:
                 return (-math.inf, brd_tuple[1])
-            elif outcome == 2:
+            elif outcome == self.max_player:
                 return (math.inf, brd_tuple[1])
             return self.heuristic(brd_tuple)
         if is_max_player:
