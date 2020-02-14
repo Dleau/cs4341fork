@@ -42,8 +42,8 @@ class AlphaBetaAgent(agent.Agent):
             self.max_depth = 8
         free_left = self.free_pos(brd)
         (v, move) = self.alpha_beta((brd, 0), self.max_depth, -math.inf, math.inf, True)
-        print(len(self.trans_table))
-        print("DEPTH", self.max_depth, "VALUE", v, "MOVE", move)
+        #print(len(self.trans_table))
+        #print("DEPTH", self.max_depth, "VALUE", v, "MOVE", move)
         return move
     
     def alpha_beta_helper(self, child, depth, alpha, beta, is_max_player):
@@ -263,4 +263,6 @@ board.print_it()
 #r = AlphaBetaAgent(None, None).playable_chain_single(board, 0, 1, 0, 1, 1)
 r = AlphaBetaAgent(None, None).winning_moves(board, 1)
 print(r)
+
 '''
+THE_AGENT = AlphaBetaAgent("Group13", 7)
