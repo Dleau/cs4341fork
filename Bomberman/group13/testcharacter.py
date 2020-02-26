@@ -79,7 +79,7 @@ class TestCharacter(CharacterEntity):
         for dx in range(0, wrld.width()):
             for dy in range(0, wrld.height()):
                 if(wrld.exit_at(dx, dy)):
-                    return sqrt(pow((dx - pair[0]),2) + pow((dy - pair[1]),2))     
+                    return sqrt(pow((dx - pair[0]),2) + pow((dy - pair[1]),2))   
         
     def __wall_score(self, wlrd, pair):
         '''
