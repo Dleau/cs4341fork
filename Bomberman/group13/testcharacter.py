@@ -42,30 +42,35 @@ class TestCharacter(CharacterEntity):
         '''
         Determines if a move is legal
         '''
-        return (not wrld.wall_at(x,y)) and x < wrld.width() and y < wrld.height() and x >= 0 and y >= 0
+        return x < wrld.width() and y < wrld.height() and x >= 0 and y >= 0
     
     def __get_values(self, pair):
         '''
-        Use coordinate pair on board as given, get a value
-        for the position using a hueristic or whatever.
+        Call helper functions and return list
         '''
         pass
         
     def __bomb_score(self, wrld, pair):
         '''
-        Consider world, return float score for bomb proximity
+        Bombs within strike range
         '''
         pass
         
     def __monster_score(self, wrld, pair):
         '''
-        Consider world, return float score for monster proximity
+        Distance to closest monster
         '''
         pass
         
     def __goal_distance_score(self, wrld, pair):
         '''
-        Consider world, return float score for distance to goal
+        Manhattan or euclidian distance to goal
+        '''
+        pass
+        
+    def __wall_score(self, wlrd, pair):
+        '''
+        Return 0 if move is into a wall, 1 if not
         '''
         pass
 
