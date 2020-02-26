@@ -24,7 +24,7 @@ class TestCharacter(CharacterEntity):
         '''
         Use self to determine position on board, return
         a list of coordinates representing legal next moves.
-        Note: return tuples
+        Note: return tuples as legal (dx, dy)
         '''
         pairs = [] # keep legal pairs
         character_x = wrld.me(self).x
@@ -38,12 +38,33 @@ class TestCharacter(CharacterEntity):
         return pairs
 
     def __is_move_legal(self, wrld, x, y):
+        '''
+        Determines if a move is legal
+        '''
         return (not wrld.wall_at(x,y)) and x < wrld.width() and y < wrld.height() and x >= 0 and y >= 0
     
-    def __get_value(self, pair):
+    def __get_values(self, pair):
         '''
         Use coordinate pair on board as given, get a value
         for the position using a hueristic or whatever.
+        '''
+        pass
+        
+    def __bomb_score(self, wrld, pair):
+        '''
+        Consider world, return float score for bomb proximity
+        '''
+        pass
+        
+    def __monster_score(self, wrld, pair):
+        '''
+        Consider world, return float score for monster proximity
+        '''
+        pass
+        
+    def __goal_distance_score(self, wrld, pair):
+        '''
+        Consider world, return float score for distance to goal
         '''
         pass
 
