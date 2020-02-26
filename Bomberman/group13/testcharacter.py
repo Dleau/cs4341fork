@@ -1,5 +1,6 @@
 # This is necessary to find the main code
 import sys
+from math import *
 sys.path.insert(0, '../bomberman')
 # Import necessary stuff
 from entity import CharacterEntity
@@ -54,7 +55,16 @@ class TestCharacter(CharacterEntity):
         '''
         Bombs within strike range
         '''
-        pass
+        bomb_threats = 0;
+        for dx in range(0, wrld.width()):
+            if(wrld.bomb_at(dx, pair[1])):
+                bomb_threats += 1;
+
+        for dy in range(0, wrld.height()):
+            if(wrld.bomb_at(pair[0], dy)):
+                bomb_threats += 1;
+
+        return bomb_threats 
         
     def __monster_score(self, wrld, pair):
         '''
@@ -66,7 +76,10 @@ class TestCharacter(CharacterEntity):
         '''
         Manhattan or euclidian distance to goal
         '''
-        pass
+        for dx in range(0, wrld.width()):
+            for dy in range(0, wrld.height()):
+                if(wrld.exit_at(dx, dy)):
+                    return sqrt(pow((dx - pair[0]),2) + pow((dy - pair[1]),2))     
         
     def __wall_score(self, wlrd, pair):
         '''
