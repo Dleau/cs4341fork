@@ -8,7 +8,8 @@ from random import uniform, randrange
 
 class TestCharacter(CharacterEntity):
 
-    def __init__(self):
+    def __init__(self, name, avatar, x, y):
+        super().__init__(name, avatar, x, y)
         self.weights = None
         self.gamma = 0.9
         self.alpha = 1
