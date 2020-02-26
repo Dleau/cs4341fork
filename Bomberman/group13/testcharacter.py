@@ -46,11 +46,15 @@ class TestCharacter(CharacterEntity):
         '''
         return x < wrld.width() and y < wrld.height() and x >= 0 and y >= 0
     
-    def __get_values(self, pair):
+    def __get_values(self, world, pair):
         ''' @dillon
         Call helper functions and return list
         '''
-        pass
+        a = self.__bomb_score(world, pair)
+        b = self.__monster_score(world, pair)
+        c = self.__goal_distance_score(world, pair)
+        d = self.__wall_score(world, pair)
+        return [a, b, c, d]
         
     def __bomb_score(self, wrld, pair):
         ''' @joe
@@ -60,11 +64,9 @@ class TestCharacter(CharacterEntity):
         for dx in range(0, wrld.width()):
             if(wrld.bomb_at(dx, pair[1])):
                 bomb_threats += 1;
-
         for dy in range(0, wrld.height()):
             if(wrld.bomb_at(pair[0], dy)):
                 bomb_threats += 1;
-
         return bomb_threats 
         
     def __monster_score(self, world, pair):
@@ -78,7 +80,7 @@ class TestCharacter(CharacterEntity):
         distances = [] # distances to monsters
         for pair in pairs:
             x, y = pair
-            distance = sqrt( ((wrld.me(self).x - x) ** 2) + ((wrld.me(self).y - y) ** 2))
+            distance = sqrt(((wrld.me(self).x - x) ** 2) + ((wrld.me(self).y - y) ** 2))
             distances.append(distance)
         return min(distances)
         
@@ -95,7 +97,8 @@ class TestCharacter(CharacterEntity):
         ''' @dillon
         Return 0 if move is into a wall, 1 if not
         '''
-        pass
+        x, y = pair
+        return wrld.wall_at(x, y)
 
     def __calc_q(self, pair, weights):
         '''
