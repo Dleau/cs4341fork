@@ -8,7 +8,8 @@ from random import uniform, randrange
 
 class TestCharacter(CharacterEntity):
 
-    def __init__(self):
+    def __init__(self, name, avatar, x, y):
+        super().__init__(name, avatar, x, y)
         self.weights = None
         self.gamma = 0.9
         self.alpha = 1
@@ -40,7 +41,7 @@ class TestCharacter(CharacterEntity):
     def __is_move_legal(self, wrld, x, y):
         return (not wrld.wall_at(x,y)) and x < wrld.width() and y < wrld.height() and x >= 0 and y >= 0
     
-    def __get_value(self, pair):
+    def __get_values(self, pair):
         '''
         Use coordinate pair on board as given, get a value
         for the position using a hueristic or whatever.

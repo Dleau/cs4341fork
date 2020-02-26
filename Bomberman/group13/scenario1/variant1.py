@@ -21,7 +21,7 @@ g = Game.fromfile('map.txt')
 # TODO Add your character
 
 # Uncomment this if you want the test character
-g.add_character(TestCharacter("me", # name
+g.add_character(InteractiveCharacter("me", # name
                               "C",  # avatar
                               0, 0  # position
 ))
