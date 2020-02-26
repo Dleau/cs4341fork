@@ -16,7 +16,21 @@ class TestCharacter(CharacterEntity):
         a list of coordinates representing legal next moves.
         Note: return tuples
         '''
-        pass
+        legal_coordinate_list = [];
+        character_x =  wrld.me(self).x
+        character_y =  wrld.me(self).y
+        for i in range(-1, 1):
+        	for j in range(-1, 1):
+        		x = character_x + i
+        		y = character_y + j
+        		if(!wrld.wall_at(x,y) &&
+        		 x < wrld.width() &&
+        		 y < wrld.height() &&
+        		  x >= 0 && y >= 0)
+        			legal_coordinate_list.append([x,y])
+
+       	return legal_coordinate_list;
+
         
     def __get_value(self, pair):
         '''
