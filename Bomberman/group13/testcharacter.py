@@ -20,7 +20,7 @@ class TestCharacter(CharacterEntity):
         self.eps = 1
 
     def do(self, wrld):
-        x = self.__monster_score(wrld, None)
+        x = self.__get_values(wrld, (0, 0))
         print(x)
         
     def __list_next_moves(self, wrld):
@@ -73,14 +73,12 @@ class TestCharacter(CharacterEntity):
         ''' @dillon
         Distance to closest monster
         '''
-        pairs = [] # list of tuples, monster locations
+        distances = [] # distances to monsters
         monsters = [l[0] for l in list(world.monsters.values())] # list of monsters
         for monster in monsters:
-            pairs.append((monster.x, monster.y))
-        distances = [] # distances to monsters
-        for pair in pairs:
-            x, y = pair
-            distance = sqrt(((wrld.me(self).x - x) ** 2) + ((wrld.me(self).y - y) ** 2))
+            x, y = monster.x, monster.y
+            d_x, d_y = world.me(self).x - x, world.me(self).y - y
+            distance = sqrt(pow(d_x, 2) + pow(d_y, 2))
             distances.append(distance)
         return min(distances)
         
@@ -93,12 +91,12 @@ class TestCharacter(CharacterEntity):
                 if(wrld.exit_at(dx, dy)):
                     return sqrt(pow((dx - pair[0]),2) + pow((dy - pair[1]),2))   
         
-    def __wall_score(self, wlrd, pair):
+    def __wall_score(self, world, pair):
         ''' @dillon
-        Return 0 if move is into a wall, 1 if not
+        Return 0 if move is not into a wall, 1 if it is
         '''
         x, y = pair
-        return wrld.wall_at(x, y)
+        return int(world.wall_at(x, y))
 
     def __calc_q(self, pair, weights):
         '''
