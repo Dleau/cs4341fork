@@ -8,30 +8,29 @@ from colorama import Fore, Back
 class TestCharacter(CharacterEntity):
 
     def do(self, wrld):
-        pass
+        x = self.__list_next_moves(wrld)
+        print(x)
         
-    def __list_next_moves(self):
+    def __list_next_moves(self, wrld):
         '''
         Use self to determine position on board, return
         a list of coordinates representing legal next moves.
         Note: return tuples
         '''
-        legal_coordinate_list = [];
-        character_x =  wrld.me(self).x
-        character_y =  wrld.me(self).y
-        for i in range(-1, 1):
-        	for j in range(-1, 1):
-        		x = character_x + i
-        		y = character_y + j
-        		if(!wrld.wall_at(x,y) &&
-        		 x < wrld.width() &&
-        		 y < wrld.height() &&
-        		  x >= 0 && y >= 0)
-        			legal_coordinate_list.append([x,y])
+        pairs = [] # keep legal pairs
+        character_x = wrld.me(self).x
+        character_y = wrld.me(self).y
+        for d_x in range(-1, 2):
+            for d_y in range(-1, 2):
+                x = character_x + d_x
+                y = character_y + d_y
+                if self.__is_move_legal(wrld, x, y):
+                    pairs.append((x, y))
+        return pairs
 
-       	return legal_coordinate_list;
-
-        
+    def __is_move_legal(self, wrld, x, y):
+        return (not wrld.wall_at(x,y)) and x < wrld.width() and y < wrld.height() and x >= 0 and y >= 0
+    
     def __get_value(self, pair):
         '''
         Use coordinate pair on board as given, get a value
