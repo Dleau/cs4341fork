@@ -5,6 +5,7 @@ sys.path.insert(0, '../bomberman')
 from entity import CharacterEntity
 from colorama import Fore, Back
 from random import uniform, randrange
+from math import sqrt
 
 class TestCharacter(CharacterEntity):
 
@@ -18,14 +19,14 @@ class TestCharacter(CharacterEntity):
         self.eps = 1
 
     def do(self, wrld):
-        x = self.__list_next_moves(wrld)
+        x = self.__monster_score(wrld, None)
         print(x)
         
     def __list_next_moves(self, wrld):
         '''
         Use self to determine position on board, return
         a list of coordinates representing legal next moves.
-        Note: return tuples as legal (dx, dy)
+        Note: return tuples of move locations
         '''
         pairs = [] # keep legal pairs
         character_x = wrld.me(self).x
@@ -45,31 +46,40 @@ class TestCharacter(CharacterEntity):
         return x < wrld.width() and y < wrld.height() and x >= 0 and y >= 0
     
     def __get_values(self, pair):
-        '''
+        ''' @dillon
         Call helper functions and return list
         '''
         pass
         
     def __bomb_score(self, wrld, pair):
-        '''
+        ''' @joe
         Bombs within strike range
         '''
         pass
         
-    def __monster_score(self, wrld, pair):
-        '''
+    def __monster_score(self, world, pair):
+        ''' @dillon
         Distance to closest monster
         '''
-        pass
+        pairs = [] # list of tuples, monster locations
+        monsters = [l[0] for l in list(world.monsters.values())] # list of monsters
+        for monster in monsters:
+            pairs.append((monster.x, monster.y))
+        distances = [] # distances to monsters
+        for pair in pairs:
+            x, y = pair
+            distance = sqrt( ((wrld.me(self).x - x) ** 2) + ((wrld.me(self).y - y) ** 2))
+            distances.append(distance)
+        return min(distances)
         
     def __goal_distance_score(self, wrld, pair):
-        '''
+        ''' @joe
         Manhattan or euclidian distance to goal
         '''
         pass
         
     def __wall_score(self, wlrd, pair):
-        '''
+        ''' @dillon
         Return 0 if move is into a wall, 1 if not
         '''
         pass
