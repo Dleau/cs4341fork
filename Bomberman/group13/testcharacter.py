@@ -1,6 +1,6 @@
 # This is necessary to find the main code
 import sys
-from math import *
+from math import inf, sqrt
 sys.path.insert(0, '../bomberman')
 # Import necessary stuff
 from entity import CharacterEntity
@@ -18,10 +18,14 @@ class TestCharacter(CharacterEntity):
         self.q = 0
         self.r = -0.01
         self.eps = 1
+        self.pair = (x, y)
 
     def do(self, wrld):
-        x = self.__get_values(wrld, (0, 0))
-        print(x)
+        #x = self.__get_values(wrld, (0, 0))
+        #print(x)
+        (dx,dy) = self.__calc_next_move(self.pair, wrld)
+        self.pair = (dx, dy)
+        self.move(dx, dy)
         
     def __list_next_moves(self, wrld):
         '''
@@ -60,13 +64,13 @@ class TestCharacter(CharacterEntity):
         ''' @joe
         Bombs within strike range
         '''
-        bomb_threats = 0;
+        bomb_threats = 0
         for dx in range(0, wrld.width()):
             if(wrld.bomb_at(dx, pair[1])):
-                bomb_threats += 1;
+                bomb_threats += 1
         for dy in range(0, wrld.height()):
             if(wrld.bomb_at(pair[0], dy)):
-                bomb_threats += 1;
+                bomb_threats += 1
         return bomb_threats 
         
     def __monster_score(self, world, pair):
@@ -80,7 +84,7 @@ class TestCharacter(CharacterEntity):
             d_x, d_y = world.me(self).x - x, world.me(self).y - y
             distance = sqrt(pow(d_x, 2) + pow(d_y, 2))
             distances.append(distance)
-        return min(distances)
+        return 0 if len(distances) == 0 else min(distances)
         
     def __goal_distance_score(self, wrld, pair):
         ''' @joe
@@ -98,13 +102,13 @@ class TestCharacter(CharacterEntity):
         x, y = pair
         return int(world.wall_at(x, y))
 
-    def __calc_q(self, pair, weights):
+    def __calc_q(self, pair, weights, wrld):
         '''
         Calculates and returns the q value and weights
         given a tuple pair for move and the current weights
         '''
         # retrieve state values and calculate new weights
-        state_vals = self.__get_value(pair)
+        state_vals = self.__get_values(wrld, pair)
         if weights is None:
             weights = [1 for _ in state_vals]
         max_a = 0 # TODO: how do we calculate this?
@@ -117,23 +121,23 @@ class TestCharacter(CharacterEntity):
             weights
         )
         
-    def __calc_next_move(self, pair):
+    def __calc_next_move(self, pair, wrld):
         '''
         Calculates the next move based on approximate q learning
         '''
-        (self.q, self.weights) = self.__calc_q(pair, self.weights)
+        (self.q, self.weights) = self.__calc_q(pair, self.weights, wrld)
         # take a new move using epsilon greedy exploration
         new_move = None
-        next_moves = self.__list_next_moves()
+        next_moves = self.__list_next_moves(wrld)
         x = uniform(0, 1)
         if x < self.eps:
             # exploration
             new_move = next_moves[randrange(0,len(next_moves))]
         else:
             # exploitation
-            max_q = 0
+            max_q = -inf
             for move in next_moves:
-                (cur_q, _) = self.__calc_q(move, self.weights)
+                (cur_q, _) = self.__calc_q(move, self.weights, wrld)
                 if cur_q > max_q:
                     max_q = cur_q
                     new_move = move
