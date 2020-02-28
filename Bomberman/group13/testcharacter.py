@@ -94,7 +94,7 @@ class TestCharacter(CharacterEntity):
         goal_pos = wrld.exitcell
         cur_pos = self.pair
         barriers = 0
-        
+
         return 1/(barriers+1)
         
     
@@ -157,6 +157,8 @@ class TestCharacter(CharacterEntity):
         max_a = self.k/(self.tried_pairs[pair] + 1)
         dx = pair[0] - self.pair[0]
         dy = pair[1] - self.pair[1]
+        if dx == 0 and dy == 0: # TODO: bomb max_n
+            return 0
         cur_move = [pair[0], pair[1]]
         print("DX", dx, "DY", dy)
         while True:
