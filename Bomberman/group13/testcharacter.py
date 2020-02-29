@@ -78,25 +78,35 @@ class TestCharacter(CharacterEntity):
         ''' @dillon
         Call helper functions and return list
         '''
-        a = self.__bomb_score(world, pair)
-        b = self.__monster_score(world, pair)
+        #a = self.__bomb_score(world, pair)
+        #b = self.__monster_score(world, pair)
         c = self.__goal_distance_score(world, pair)
         d = self.__block_score(world, pair)
         e = self.__barriers_score(world, pair)
-        return [a, b, c, d]
+        return [c, d, e]
         
     
     def __barriers_score(self, wrld, pair):
-        ''' @ray
+        ''' @ray and @dillon
         number of barriers between the agent and the goal
+        
+        create rectangle with source as (0, 0) and destination
+        as (r, c); travel down left and right edges of rectangle,
+        count walls (this avoids the need for path finding, could
+        be tweaked with a min() or max() call or something similar)
+        
         1/(barriers+1)
         '''
-        goal_pos = wrld.exitcell
-        cur_pos = self.pair
         barriers = 0
-
-        return 1/(barriers+1)
-        
+        src_col, src_row = self.pair
+        dst_col, dst_row = wrld.exitcell
+        for row in range(src_row, dst_row):
+            if wrld.wall_at(src_col, row):
+                barriers += 1
+            if wrld.wall_at(dst_col, row):
+                barriers += 1
+        print('barrier', barriers)
+        return 1 / (barriers + 1)
     
     def __block_score(self, wrld, pair):
         ''' @ray
