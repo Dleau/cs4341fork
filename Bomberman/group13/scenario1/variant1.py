@@ -29,6 +29,9 @@ g = Game.fromfile('map.txt')
 # Uncomment this if you want the interactive character
 g.add_character(TestCharacter("me", "C", 0, 0))
 
+#from specialopscharacter import SpecialOpsCharacter
+#g.add_character(SpecialOpsCharacter("specops", "C", 0, 0))
+
 # Run!
 
 # Use this if you want to press ENTER to continue at each step
