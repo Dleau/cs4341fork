@@ -77,8 +77,13 @@ class TestCharacter(CharacterEntity):
         c = self.__goal_path_score(world, pair)
         d = self.__will_die_score(world, pair)
         #e = self.__enemy_bomb_score(world, pair)
-        f = self.__no_path_score(world, pair)
-        return [a, b, c, d, f] #e, f]
+        e = self.__no_path_score(world, pair)
+        f = self.__chaos_score(world)
+        g = self.__goal_distance_score(world,pair)
+        return [a, b, c, d, e, f, g]
+
+    def __chaos_score(self, wrld):
+        return len(wrld.bombs)
 
     def __no_path_score(self, wrld, pair):
         ''' @ray
@@ -101,6 +106,8 @@ class TestCharacter(CharacterEntity):
             if wrld.explosion_at(move[0],move[1]) is not None:
                 return 0
             if wrld.monsters_at(move[0],move[1]) is not None:
+                return 0
+            if wrld.bomb_at(move[0],move[1]) is not None:
                 return 0
         return 1
     
@@ -133,12 +140,12 @@ class TestCharacter(CharacterEntity):
         '''
         bomb_threats = 0
         # count all the bombs in a cross around the character
-        for dx in range(-5,5):
+        for dx in range(-3,4):
             x = pair[0]+dx
             y = pair[1]
             if self.__is_move_legal(wrld,x,y) and wrld.bomb_at(x,y) is not None:
                  bomb_threats += 1
-        for dy in range(-5,5):
+        for dy in range(-3,4):
             x = pair[0]
             y = pair[1]+dy
             if self.__is_move_legal(wrld,x,y) and wrld.bomb_at(x,y) is not None:
@@ -186,7 +193,7 @@ class TestCharacter(CharacterEntity):
             """
             distances.append(self.__path_to_point(world,pair,(monster.x,monster.y)))
         #print(distances)
-        return 1 if len(distances) == 0 else 1-(1/(min(min(distances),4)+1))
+        return 1 if len(distances) == 0 or min(distances) > 4 else 1-(1/(min(distances)+1))
     
     def __path_to_point(self, wrld, pair, to, incomplete=False):
         pair = (pair[0], pair[1])
@@ -221,22 +228,23 @@ class TestCharacter(CharacterEntity):
         return path_length
 
     def __goal_path_score(self, wrld, pair):
-        return 1/(self.__path_to_point(wrld,pair,wrld.exitcell)+1)
+        path_tuple = self.__path_to_point(wrld,pair,wrld.exitcell,incomplete=True)
+        if path_tuple[0]:
+            return 1/(path_tuple[1]+1)
+        return 0
 
-    """
     def __goal_distance(self, wrld, pair):
         goal_loc = wrld.exitcell
-        return sqrt(pow((goal_loc[0] - pair[0]),2) + pow((goal_loc[1] - pair[1]),2))
-        #return abs(goal_loc[0] - pair[0]) + abs(goal_loc[1] - pair[1])
+        #return sqrt(pow((goal_loc[0] - pair[0]),2) + pow((goal_loc[1] - pair[1]),2))
+        return abs(goal_loc[0] - pair[0]) + abs(goal_loc[1] - pair[1])
 
     def __goal_distance_score(self, wrld, pair):
         ''' @ray
-        (1/(Euclidean distance + 1)) increases to 1 as
+        (1/(distance + 1)) increases to 1 as
         the agent gets closer to the goal and decreases
         as the agent gets farther way
         '''
         return 1/(self.__goal_distance(wrld, pair)+1)
-    """
 
     def __find_max_a(self, pair, weights, wrld):
         '''
