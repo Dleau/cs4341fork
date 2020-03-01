@@ -7,16 +7,15 @@ import time
 
 # Import necessary stuff
 import random
-from game_nodisp import Game
-#from game import Game
+#from game_nodisp import Game
+from game import Game
 from monsters.selfpreserving_monster import SelfPreservingMonster
 
-# TODO This is your code!
 sys.path.insert(1, '../group13')
 from testcharacter import TestCharacter
 
 weights = None
-eps = 0.25
+eps = 0
 
 games = 0
 won = 0
@@ -25,30 +24,28 @@ while True:
     # Create the game
     random.seed(time.time())
     g = Game.fromfile('map_blocked.txt')
-    g.add_monster(SelfPreservingMonster("smart", 
+    g.world.time = 200
+    """g.add_monster(SelfPreservingMonster("smart", 
                                 "S",      
                                 3, 13,
                                 1      
-    ))
-
-    
-    g.add_monster(SelfPreservingMonster("smart", 
-                                "S",      
-                                3, 2,
-                                1      
-    ))
+    ))"""
 
     our_char = TestCharacter("me","C", 0, 0, weights, eps)
     g.add_character(our_char)
 
     # Run!
-    g.go(1)
+    g.go(0)
 
     final_score = g.world.scores["me"]
     r = None
-    if final_score > 0:
+    if our_char.pair == g.world.exitcell:
         won += 1
         r = 1000
+        print("WON")
+    else:
+        print("LOST")
+        r = -1000
     games += 1
 
     # last q calculation

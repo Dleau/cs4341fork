@@ -66,6 +66,9 @@ class TestCharacter(CharacterEntity):
         # move isn't allowed if theres a wall there
         if wrld.wall_at(x,y):
             return False
+        # can't place a bomb if theres already one
+        if (wrld.me(self).x, wrld.me(self).y) == (x,y) and len(wrld.bombs) > 0: # TODO: make this work
+            return False
         return True
     
     def __get_values(self, world, pair):
@@ -78,9 +81,9 @@ class TestCharacter(CharacterEntity):
         d = self.__will_die_score(world, pair)
         #e = self.__enemy_bomb_score(world, pair)
         e = self.__no_path_score(world, pair)
-        f = self.__chaos_score(world)
+        #f = self.__chaos_score(world)
         g = self.__goal_distance_score(world,pair)
-        return [a, b, c, d, e, f, g]
+        return [a, b, c, d, e, g]
 
     def __chaos_score(self, wrld):
         return len(wrld.bombs)
@@ -193,7 +196,7 @@ class TestCharacter(CharacterEntity):
             """
             distances.append(self.__path_to_point(world,pair,(monster.x,monster.y)))
         #print(distances)
-        return 1 if len(distances) == 0 or min(distances) > 4 else 1-(1/(min(distances)+1))
+        return 1 if len(distances) == 0 else 1-(1/(min(distances)+1))
     
     def __path_to_point(self, wrld, pair, to, incomplete=False):
         pair = (pair[0], pair[1])
@@ -265,13 +268,10 @@ class TestCharacter(CharacterEntity):
                 # died
                 break
             if dx == 0 and dy == 0:
-                if len(clone_wrld.bombs) > 0:
-                    # already a bomb, no value to this state
-                    break
                 # calculate the quality value if monsters/blocks
                 # adjacent were blown up
                 for i in range(2):
-                    for d in range(-5,5):
+                    for d in range(-5,6):
                         x = pair[0]; y = pair[1]
                         if i == 0:
                             x += d
@@ -284,13 +284,6 @@ class TestCharacter(CharacterEntity):
                                     clone_wrld.remove_character(monster)
                             if clone_wrld.wall_at(x,y):
                                 clone_wrld.grid[x][y] = None
-                # add bomb so it's factored into bomb threats
-                clone_wrld.add_bomb(cur_move[0],cur_move[1],me)
-                """
-                clone_wrld.add_bomb(cur_move[0],cur_move[1],me)
-                # TODO: can there be more than one bomb?
-                clone_wrld.add_blast(clone_wrld.bombs[0])
-                """
             else:
                 me.move(dx,dy)
             (clone_wrld, _) = clone_wrld.next()
@@ -361,8 +354,8 @@ class TestCharacter(CharacterEntity):
         (clone_wrld, _) = clone_wrld.next()
         score = clone_wrld.scores["me"] - wrld.scores["me"]
         # cost of living should be negative
-        if score == 1:
-            score = -1
+        score += -self.__goal_distance(wrld,pair)
+        print("S", score)
         return score
         
     def __calc_next_move(self, pair, wrld):
