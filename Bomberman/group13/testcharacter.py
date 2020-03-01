@@ -254,22 +254,35 @@ class TestCharacter(CharacterEntity):
         @ray
         predicts the maximum quality value for the given move
         '''
+        # initialize max_a with a curiosity score
         max_a = self.k/(self.tried_pairs[pair] + 1)
+        # find the dx, dy for the given move
+        # so we can add it every simulation step
         dx = pair[0] - self.pair[0]
         dy = pair[1] - self.pair[1]
         cur_move = [pair[0], pair[1]]
         #print("DX", dx, "DY", dy)
+        # clone the world so we can simulate it
         clone_wrld = SensedWorld.from_world(wrld)
+        # keep simulating into the future if this path is taken
+        # until we hit a move that is illegal (like hitting into a wall)
         while True:
+            # add the dx,dy for this simulation step
             cur_move[0] += dx
             cur_move[1] += dy
             me = clone_wrld.me(self)
+            # we died, so this estimate has ended
             if me is None:
                 # died
                 break
+            # we are dropping a bomb
+            # this works differently than moves
+            # since when you drop a bomb you don't keep going
+            # this simulates what will eventually happen if it explodes
+            # and it assumes the agent moves out of the way
             if dx == 0 and dy == 0:
-                # calculate the quality value if monsters/blocks
-                # adjacent were blown up
+                # simulate blowing up the monsters
+                # and walls in path of the bomb
                 for i in range(2):
                     for d in range(-5,6):
                         x = pair[0]; y = pair[1]
@@ -285,24 +298,30 @@ class TestCharacter(CharacterEntity):
                             if clone_wrld.wall_at(x,y):
                                 clone_wrld.grid[x][y] = None
             else:
+                # otherwise, simply move in the dx,dy direction
                 me.move(dx,dy)
+            # simulate the world
             (clone_wrld, _) = clone_wrld.next()
             """
             print("AFTER:", dx, dy)
             clone_wrld.printit()
             print("----")
             """
+            # if the move is illegal, the estimation is over
             if not self.__is_move_legal(wrld, cur_move[0], cur_move[1]):
                 break
+            # get the approximate q value, get the values for this
+            # simulated world and calulate q
             vals = self.__get_values(clone_wrld, cur_move)
             q = sum([weights[i] * f for i, f in enumerate(vals)])
-            # favor curiosity by decaying by the number of times
-            # this particular pair has been tried
+            # increase the number of times this has been tried
             m_tuple = (cur_move[0], cur_move[1])
             if m_tuple not in self.tried_pairs:
                 self.tried_pairs[m_tuple] = 0
+            # add the calculated q value to the curiosity score
             q = q + self.k/(self.tried_pairs[m_tuple] + 1)
             #print("Q", q)
+            # if this q value is better, then make it the new max_a
             if q > max_a:
                 max_a = q
             # only iterate once for bomb placements
