@@ -25,7 +25,7 @@ g.add_monster(SelfPreservingMonster("selfpreserving", # name
 g.add_character(TestCharacter("me", # name
                               "C",  # avatar
                               0, 0  # position
-))
+,nn_file="model.pickle",eps=0))
 
 # Run!
 g.go(1)

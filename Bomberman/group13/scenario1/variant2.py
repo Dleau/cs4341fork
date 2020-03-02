@@ -24,7 +24,7 @@ g.add_monster(StupidMonster("stupid", # name
 g.add_character(TestCharacter("me", # name
                               "C",  # avatar
                               0, 0  # position
-))
+,nn_file="model.pickle",eps=0,explore=False))
 
 # Run!
 g.go(1)
