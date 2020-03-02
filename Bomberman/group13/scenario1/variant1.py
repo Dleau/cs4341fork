@@ -30,6 +30,9 @@ g = Game.fromfile('map.txt')
 g.add_character(TestCharacter("me", "C", 0, 0,
     nn_file="model.pickle",eps=0,explore=False))
 
+#from specialopscharacter import SpecialOpsCharacter
+#g.add_character(SpecialOpsCharacter("specops", "C", 0, 0))
+
 # Run!
 
 # Use this if you want to press ENTER to continue at each step
