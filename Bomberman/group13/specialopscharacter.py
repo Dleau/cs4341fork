@@ -4,7 +4,9 @@ sys.path.insert(0, '../bomberman')
 # Import necessary stuff
 from entity import CharacterEntity
 from colorama import Fore, Back
-from sensed_world.SensedWorld import from_world
+from sensed_world import SensedWorld
+from random import uniform, randrange
+from math import inf
 
 class SpecialOpsCharacter(CharacterEntity):
 
@@ -16,19 +18,37 @@ class SpecialOpsCharacter(CharacterEntity):
         super().__init__(name, avatar, x, y)
         self.alpha = 0 # alpha value for use in q-learning formula
         self.gamma = 0 # gamma value, likewise
+        self.epsilon = 0.01 # epsilon value, likewise
+        self.q = 0
         self.weights = {f.__name__: 0 for f in self.__functions()} # function name -> weight
 
-    def do(self, wrld):
+    def do(self, world):
         # Commands
         ''' @dillon
         Character won't go anywhere, function isn't done
         '''
-        dx, dy = 0, 1
-        bomb = False
-        print(self.weights)
-        self.move(dx, dy)
-        if bomb:
+        dx, dy = self.__next_action(world)
+        if (dx, dy) == (0, 0):
             self.place_bomb()
+        else:
+            self.move(dx, dy)
+            
+    def __next_action(self, world):
+        possible_actions = self.__list_next_moves(world)
+        z = uniform(0, 1)
+        a = None # next action
+        if z < self.epsilon: # exploration
+            a = possible_actions[randrange(0, len(next_moves))] # pick random action
+        else: # exploitation
+            max_q = -inf
+            for possible_action in possible_actions:
+                q = self.__q(world, possible_action)
+                if q > max_q:
+                    max_q = q
+                    a = possible_action
+        x, y = self.__s(world)
+        ax, ay = a
+        return (ax - x, ay - y)
       
     def __functions(self):
         ''' @dillon
@@ -84,7 +104,7 @@ class SpecialOpsCharacter(CharacterEntity):
         s_x, s_y = self.__s(world) # current position or state, (x, y)
         a_x, a_y = action # split action into x and y
         dx, dy = a_x - s_x, a_y - s_y # get directional deltas
-        clone = from_world(world) # clone world for manipulation
+        clone = SensedWorld.from_world(world) # clone world for manipulation
         me = clone.me(self) # get cloned character
         if me is None: return -1000 # death occured, reward is a terrible -1000
         me.move(dx, dy) # character is alive, make move
@@ -96,7 +116,21 @@ class SpecialOpsCharacter(CharacterEntity):
         '''
         max a assignment, approximate q-learnings
         '''
-        pass # TODO implement
+        x, y = self.__s(world) # current position or state, (x, y)
+        a_x, a_y = action # split action into x and y
+        dx, dy = a_x - x, a_y - y # get directional deltas
+        clone = SensedWorld.from_world(world) # clone world for manipulation
+        max_a = 0 # TODO
+        while self.__within_bounds(world, x, y): # location is within bounds of board
+            me = clone.me(self) # find character on the cloned board
+            if me is None: # the character has died
+                return max_a
+            me.move(dx, dy) # move the character
+            clone, _ = clone.next() # simulate the next iteration of the world
+            q = self.__q(self, clone, action) # calculate q
+            if q > max_a: # re-assign if necessary
+                max_a = q
+        return max_a
         
     def __s(self, world):
         ''' @dillon
@@ -104,5 +138,24 @@ class SpecialOpsCharacter(CharacterEntity):
         '''
         return (world.me(self).x, world.me(self).y)
         
-    
-    
+    def __within_bounds(self, world, x, y):
+        '''
+        Is a location within the bounds of the board?
+        '''
+        return x < world.width() and y < world.height() and x >= 0 and y >= 0
+        
+    def __list_next_moves(self, world):
+        '''
+        Use self to determine position on board, return
+        a list of coordinates representing legal next moves.
+        Note: return tuples of move locations
+        '''
+        pairs = [] # keep legal pairs
+        character_x, character_y = self.__s(world)
+        for d_x in range(-1, 2):
+            for d_y in range(-1, 2):
+                x = character_x + d_x
+                y = character_y + d_y
+                if self.__within_bounds(world, x, y): # adjust w/ walls probably
+                    pairs.append((x, y))
+        return pairs
