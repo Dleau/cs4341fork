@@ -17,24 +17,25 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 class BombNet(nn.Module):
-    def __init__(self,wrld):
+    def __init__(self, wrld):
         super(BombNet, self).__init__()
         # input convolutional layers
-        self.conv1 = nn.Conv2d(6,12,3,padding=1)
-        #self.conv2 = nn.Conv2d(12,12,2)
+        self.conv1 = nn.Conv2d(6,12,(8,4),padding=(3,2))
+        #self.conv2 = nn.Conv2d(12,12,4,padding=2)
         # size
         size = wrld.width()*wrld.height()
         # hidden layer
-        self.lin1 = nn.Linear(432,300)
+        self.lin1 = nn.Linear(1944,512)
         # output layer
-        self.lin2 = nn.Linear(300,1)
+        self.lin2 = nn.Linear(512,1)
         self.size = size
         
     def forward(self, x):
-        x = F.max_pool2d(F.relu(self.conv1(x)),(2,2))
+        #x = F.max_pool2d(F.relu(self.conv1(x)),(2,2))
         #x = F.max_pool2d(F.relu(self.conv2(x)),(2,2))
-        x = x.view(-1, 432)
-        x = F.softmax(self.lin1(x), dim=1)
+        x = F.relu(self.conv1(x))
+        x = x.view(-1, 1944)
+        x = F.relu(self.lin1(x))
         x = self.lin2(x)
         return x
 
@@ -43,7 +44,7 @@ class TestCharacter(CharacterEntity):
     def __init__(self, name, avatar, x, y, nn_file=None, eps=0, training=False):
         super().__init__(name, avatar, x, y)
         self.gamma = 0.9
-        self.alpha = 0.1
+        self.alpha = 0.001
         self.q = 0
         self.eps = eps
         self.approx_net = None
@@ -59,7 +60,7 @@ class TestCharacter(CharacterEntity):
                 self.approx_net = torch.load(f)
         else:
             self.approx_net = BombNet(wrld)
-        self.optimizer = optim.SGD(self.approx_net.parameters(),lr=self.alpha)
+        self.optimizer = optim.Adam(self.approx_net.parameters(),lr=self.alpha)
         self.criterion = nn.MSELoss()
         
     def save_nn(self, filename):
@@ -82,15 +83,15 @@ class TestCharacter(CharacterEntity):
     """
 
     def __update_nn(self,training_data):
-        for _ in range(2): # epoch
-            for wrld, ev, target in training_data:
-                #(wrld,ev,target) = training_data[-1]
-                target = torch.tensor(np.asanyarray([[target]]),dtype=torch.float32)
-                self.optimizer.zero_grad()
-                output = self.__approx_q(wrld,ev)
-                loss = self.criterion(output,target)
-                loss.backward()
-                self.optimizer.step()
+        for wrld, ev, target in training_data:
+            print(target)
+            #(wrld,ev,target) = training_data[-1]
+            target = torch.tensor(np.asanyarray([[target]]),dtype=torch.float32)
+            self.optimizer.zero_grad()
+            output = self.__approx_q(wrld,ev)
+            loss = self.criterion(output,target)
+            loss.backward()
+            self.optimizer.step()
     """
     def __get_wrld_v(self, wrld):
         wrld_v = np.ndarray((6,6,6))
@@ -146,7 +147,7 @@ class TestCharacter(CharacterEntity):
             x = idx[0]
             y = idx[1]
             # what is at a cell
-            wrld_v[x][y][:] = 0.5
+            wrld_v[x][y][:] = 0
             if wrld.wall_at(x,y):
                 wrld_v[x][y][0] = 1
             if wrld.exit_at(x,y):
@@ -212,7 +213,35 @@ class TestCharacter(CharacterEntity):
                 return False
         return True
 
-    def __find_max_a(self, wrld):
+    def __find_max_a(self, wrld, action):
+        '''
+        max_q = -100
+        dx, dy = action
+        clone = SensedWorld.from_world(wrld) # clone the world
+        bomb = False
+        #print("ACTION --", action)
+        while True:
+            me = clone.me(self)
+            if  not self.__within_bounds(clone,dx+me.x,dy+me.y) or clone.wall_at(dx+me.x,dy+me.y):
+                break
+            if dx == 0 and dy == 0:
+                me.place_bomb() # drop a bomb if we are not moving
+                bomb = True
+            else:
+                me.move(dx, dy)
+            clone, ev = clone.next()
+            #clone.printit()
+            q = self.__approx_q(clone, ev).item()
+            print("A", q)
+            if q > max_q:
+                max_q = q
+            if clone.me(self) is None or bomb:
+                break
+        #print("---")
+        return max_q
+        '''
+
+        
         max_q = -inf
         for (dx,dy) in self.__list_next_moves(wrld):
             clone_wrld = SensedWorld.from_world(wrld)
@@ -228,11 +257,21 @@ class TestCharacter(CharacterEntity):
             print(ev)
             print("----")
             """
+            """
+            (r, final) = self.__calc_r(clone_wrld,ev)
+            if final:
+                q = r
+            else:
+                a = self.__approx_q(clone_wrld,ev).item()
+                q = r + self.gamma * a
+            """
             q = self.__approx_q(clone_wrld,ev).item()
+            #print("CUR A", q)
             if q > max_q:
                 max_q = q
         #print("MAX Q", max_q)
         return max_q
+        
 
     def __calc_r(self, wrld, ev):
         final_state = False
@@ -261,7 +300,7 @@ class TestCharacter(CharacterEntity):
         r -= 0.001
         return (r, final_state)
 
-    def calc_q(self, wrld, ev):
+    def calc_q(self, wrld, ev, action):
         '''
         @ray
         Calculates and returns the q value given a world
@@ -272,7 +311,7 @@ class TestCharacter(CharacterEntity):
             target = r
         else:
             # find the estimated max future q
-            max_a = self.__find_max_a(wrld)
+            max_a = self.__find_max_a(wrld, action)
             #print("MAX A", max_a)
             target = r + self.gamma * max_a
         q = self.q + self.alpha * (target - self.q)
@@ -285,7 +324,7 @@ class TestCharacter(CharacterEntity):
         #q = self.__approx_q(wrld).item()
         #print("Q:", q, "TARGET: ", target, "R: ", r)
         return (q, target, final_state)
-        
+    ''
     def __calc_next_move(self, wrld):
         '''
         @ray
@@ -305,7 +344,7 @@ class TestCharacter(CharacterEntity):
             chosen_world = SensedWorld.from_world(wrld)
             chosen_world.me(self).move(new_move[0],new_move[1])
             (chosen_world, chosen_ev) = chosen_world.next()
-            (self.q, chosen_target, final_state) = self.calc_q(chosen_world, chosen_ev)
+            (self.q, chosen_target, final_state) = self.calc_q(chosen_world, chosen_ev, new_move)
         else:
             # exploitation
             max_q = -inf
@@ -313,7 +352,7 @@ class TestCharacter(CharacterEntity):
                 c_wrld = SensedWorld.from_world(wrld)
                 c_wrld.me(self).move(move[0],move[1])
                 (c_wrld, ev) = c_wrld.next()
-                (cur_q, cur_target, cur_fs) = self.calc_q(c_wrld, ev)
+                (cur_q, cur_target, cur_fs) = self.calc_q(c_wrld, ev, move)
                 if cur_q > max_q:
                     max_q = cur_q
                     new_move = move
@@ -328,3 +367,29 @@ class TestCharacter(CharacterEntity):
                 print("Training...")
                 self.__update_nn(self.training_data)
         return new_move
+    
+    def __calc_next_interactive(self, wrld):
+        # Commands
+        dx, dy = 0, 0
+        # Handle input
+        for c in input("How would you like to move (w=up,a=left,s=down,d=right)? "):
+            if 'w' == c:
+                dy -= 1
+            if 'a' == c:
+                dx -= 1
+            if 's' == c:
+                dy += 1
+            if 'd' == c:
+                dx += 1
+        chosen_world = SensedWorld.from_world(wrld)
+        chosen_world.me(self).move(dx,dy)
+        (chosen_world, chosen_ev) = chosen_world.next()
+        (self.q, chosen_target, final_state) = self.calc_q(chosen_world, chosen_ev)
+        if self.training is True:
+            self.training_data.append([chosen_world,chosen_ev,chosen_target])
+            if final_state is True:
+                print("Training...")
+                self.__update_nn(self.training_data)
+        return (dx,dy)
+        
+

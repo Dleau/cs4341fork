@@ -16,8 +16,8 @@ from testcharacter import TestCharacter
 
 from sensed_world import SensedWorld
 
-eps = 0
-nn_filename = None
+eps = 0.8
+nn_filename = "model.pickle"
 games = 0
 won = 0
 try:
@@ -54,7 +54,7 @@ try:
         
         # decrease epsilon
         if eps > 0:
-            eps -= 0.01
+            eps *= 0.995
         elif eps < 0:
             eps = 0
         print("EPS:", eps)
