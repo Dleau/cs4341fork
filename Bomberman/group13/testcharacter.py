@@ -19,20 +19,20 @@ import torch.optim as optim
 class BombNet(nn.Module):
     def __init__(self,wrld):
         super(BombNet, self).__init__()
-        self.conv1 = nn.Conv2d(1,6,2,padding=1)
-        self.conv2 = nn.Conv2d(6,12,2)
+        self.conv1 = nn.Conv2d(6,12,2,padding=1)
+        self.conv2 = nn.Conv2d(12,20,2)
         # size
         size = wrld.width()*wrld.height()
         # hidden layer
-        self.lin1 = nn.Linear(48,20)
+        self.lin1 = nn.Linear(80,50)
         # world dimensions to q value
-        self.lin2 = nn.Linear(20,1)
+        self.lin2 = nn.Linear(50,1)
         self.size = size
         
     def forward(self, x):
         x = F.max_pool2d(F.relu(self.conv1(x)),(2,2))
         x = F.max_pool2d(F.relu(self.conv2(x)),(2,2))
-        x = x.view(-1, 48)
+        x = x.view(-1, 80)
         x = F.relu(self.lin1(x))
         x = self.lin2(x)
         return x
@@ -65,7 +65,6 @@ class TestCharacter(CharacterEntity):
     def __approx_q(self, wrld):
         x = torch.as_tensor(self.__get_wrld_v(wrld), dtype=torch.float32)
         x = x.unsqueeze(0)
-        x = x.unsqueeze(0)
         out = self.approx_net(x)
         return out
     
@@ -79,24 +78,24 @@ class TestCharacter(CharacterEntity):
         self.optimizer.step()
 
     def __get_wrld_v(self, wrld):
-        wrld_v = np.ndarray((wrld.width(),wrld.height()))
-        for idx in np.ndindex(wrld_v.shape):
+        wrld_v = np.ndarray((wrld.width(),wrld.height(),6))
+        for idx in np.ndindex((wrld.width(),wrld.height())):
             x = idx[0]
             y = idx[1]
             # what is at a cell
-            wrld_v[x][y] = 1
+            wrld_v[x][y][:] = 0.5
             if wrld.wall_at(x,y):
-                wrld_v[x][y] = 2
-            elif wrld.exit_at(x,y):
-                wrld_v[x][y] = 3
-            elif wrld.bomb_at(x,y) is not None:
-                wrld_v[x][y] = 4
-            elif wrld.explosion_at(x,y) is not None:
-                wrld_v[x][y] = 5
-            elif wrld.monsters_at(x,y) is not None:
-                wrld_v[x][y] = 6
-            elif wrld.characters_at(x,y) is not None:
-                wrld_v[x][y] = 7
+                wrld_v[x][y][0] = 1
+            if wrld.exit_at(x,y):
+                wrld_v[x][y][1] = 1
+            if wrld.bomb_at(x,y) is not None:
+                wrld_v[x][y][2] = 1
+            if wrld.explosion_at(x,y) is not None:
+                wrld_v[x][y][3] = 1
+            if wrld.monsters_at(x,y) is not None:
+                wrld_v[x][y][4] = 1
+            if wrld.characters_at(x,y) is not None:
+                wrld_v[x][y][5] = 1
         return np.transpose(wrld_v)
 
     def do(self, wrld):
@@ -182,17 +181,17 @@ class TestCharacter(CharacterEntity):
                 r -= 100
                 final_state = True
             elif event.tpe == Event.BOMB_HIT_MONSTER:
-                r += 1
+                r += 0.01
             elif event.tpe == Event.BOMB_HIT_WALL:
-                r += 0.5
+                r += 0.005
         # cost of living (positive?)
         """
         me = wrld.me(self)
         if me is not None:
             dist = np.linalg.norm(np.subtract((me.x,me.y),wrld.exitcell))
-            r += 1/(dist+1)
+            r -= (1-(1/(dist+1)))/100
         """
-        r += 0.001
+        r -= 0.00001
         return (r, final_state)
 
     def calc_q(self, wrld, ev, r=None, final_state=False):
