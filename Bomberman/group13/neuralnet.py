@@ -44,6 +44,8 @@ class NeuralNet:
         # get the vector of forward propogated values
         # layer by layer, layed out in node order
         a = np.ndarray(sum(self.sizes))
+        a_in = np.ndarray(sum(self.sizes))
+        a_in.fill(0)
         last_idx = self.sizes[0]
         a[0:last_idx] = v_in
         cur_v = v_in
@@ -52,6 +54,7 @@ class NeuralNet:
             cur_v = np.matmul(cur_v,self.weights[l])
             next_idx = last_idx + cur_v.size
             a[last_idx:next_idx] = activ(cur_v)
+            a_in[last_idx:next_idx] = cur_v
             last_idx = next_idx
         # go through all the layers in reverse order and
         # backpropogate, updating the weights along the way
@@ -65,7 +68,7 @@ class NeuralNet:
             # summed up plus j
             node_idx = j + sum(self.sizes[:-1])
             # calculate derivative values in reference to this layer
-            deltas[node_idx] = deriv(v_in[j]) * (v_expected[j] - a[node_idx])
+            deltas[node_idx] = deriv(a_in[node_idx]) * (v_expected[j] - a[node_idx])
         # other layers in reverse order
         for l in reversed(range(0,len(self.sizes)-1)):
             deriv = self.activ_derivs[l]
@@ -78,12 +81,15 @@ class NeuralNet:
                 # calculate the offset from the position in the weights
                 # to the node idx
                 i_offset = sum(self.sizes[0:l])
-                deltas[i+i_offset] = deriv(v_in[i]) * w_sum
+                deltas[i+i_offset] = deriv(a_in[i+i_offset]) * w_sum
         # update every weight in network using deltas
-        for w in self.weights:
+        for w_idx, w in enumerate(self.weights):
             for i in range(w.shape[0]):
                 for j in range(w.shape[1]):
-                    w[i][j] = w[i][j] + self.alpha * a[i] * deltas[j]
+                    # calculate delta offsets to node indices
+                    i_off = sum(self.sizes[:w_idx])
+                    j_off = sum(self.sizes[:w_idx+1])
+                    w[i][j] = w[i][j] + self.alpha * a[i+i_off] * deltas[j+j_off]
 
     def __str__(self):
         s = "NeuralNet:\n"
@@ -127,7 +133,14 @@ if __name__ == "__main__":
     v_in = np.asanyarray([1,1,1])
     v_exp = np.asanyarray([0.5])
     print("FF:", n.feed_forward(v_in))
-    for _ in range(100):
+    for _ in range(5):
         n.backpropogate(v_in,v_exp)
         print("After BP:", n)
         print("FF after BP:", n.feed_forward(v_in))
+    
+    """"
+    with open("model.pickle", "rb") as f:
+        nn = pickle.load(f)
+        print(nn)
+    """
+    

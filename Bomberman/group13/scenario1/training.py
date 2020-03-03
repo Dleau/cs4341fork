@@ -7,61 +7,64 @@ import time
 
 # Import necessary stuff
 import random
-#from game_nodisp import Game
-from game import Game
+from game_nodisp import Game
+#from game import Game
 from monsters.selfpreserving_monster import SelfPreservingMonster
 
 sys.path.insert(1, '../group13')
 from testcharacter import TestCharacter
 
-eps = 0
-nn_filename = "model.pickle"
+from sensed_world import SensedWorld
 
+eps = 1
+nn_filename = "model.pickle"
 games = 0
 won = 0
-#for _ in range(t_games):
-while True:
-    # Create the game
-    random.seed(time.time())
-    g = Game.fromfile('map_blocked.txt')
-    g.world.time = 1200
+try:
+    while True:
+        # Create the game
+        random.seed(time.time())
+        g = Game.fromfile('map_blocked.txt')
+        g.world.time = 1200
+        
+        """
+        g.add_monster(SelfPreservingMonster("smart", 
+                                    "S",      
+                                    3, 14,
+                                    1      
+        ))"""
 
-    g.add_monster(SelfPreservingMonster("smart", 
-                                "S",      
-                                3, 11,
-                                1      
-    ))
+        """
+        g.add_monster(SelfPreservingMonster("smart", 
+                                    "S",      
+                                    3, 5,
+                                    1      
+        ))
+        """
+        
 
+        our_char = TestCharacter("me","C", 0, 0, eps=eps, nn_file=nn_filename, training=True)
+        g.add_character(our_char)
 
-    g.add_monster(SelfPreservingMonster("smart", 
-                                "S",      
-                                3, 7,
-                                1      
-    ))
+        # Run!
+        g.go(1)
 
-    our_char = TestCharacter("me","C", 0, 0, eps=eps, nn_file=nn_filename)
-    g.add_character(our_char)
-
-    # Run!
-    g.go(1)
-
-    final_score = g.world.scores["me"]
-    r = None
-    if our_char.pair == g.world.exitcell:
-        won += 1
-        r = 1000
-        print("WON")
-    else:
-        print("LOST")
-        r = -1000
-    games += 1
-
-    # last q calculation
-    our_char.calc_q(our_char.pair,our_char.weights,g.world,r=r)
-
-    print("final weights", our_char.weights, "score", final_score)
-    print("WON:", won, "GAMES:", games, "%WON", (won/games)*100)
-    # save neural network
-    if nn_filename is None:
-        nn_filename = "model.pickle"
+        games += 1
+        
+        # decrease epsilon
+        if eps > 0:
+            eps -= 0.001
+        elif eps < 0:
+            eps = 0
+        print("EPS:", eps)
+        
+        final_score = g.world.scores["me"]
+        print("score", final_score, "games", games)
+        # save neural network
+        if nn_filename is None:
+            nn_filename = "model.pickle"
+        our_char.save_nn(nn_filename)
+except KeyboardInterrupt:
+    print("Saving neural network...")
     our_char.save_nn(nn_filename)
+    print("Saved!")
