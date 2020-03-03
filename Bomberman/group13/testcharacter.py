@@ -29,7 +29,7 @@ class BombNet(nn.Module):
         # output layer
         self.lin2 = nn.Linear(300,1)
         self.size = size
-        
+
     def forward(self, x):
         x = F.max_pool2d(F.relu(self.conv1(x)),(2,2))
         #x = F.max_pool2d(F.relu(self.conv2(x)),(2,2))
@@ -61,7 +61,7 @@ class TestCharacter(CharacterEntity):
             self.approx_net = BombNet(wrld)
         self.optimizer = optim.SGD(self.approx_net.parameters(),lr=self.alpha)
         self.criterion = nn.MSELoss()
-        
+
     def save_nn(self, filename):
         with open(filename, "wb") as f:
             torch.save(self.approx_net, f)
@@ -135,7 +135,7 @@ class TestCharacter(CharacterEntity):
             for e in ev:
                 # search the events to put the player
                 # back on the map
-                if (e.tpe == Event.BOMB_HIT_CHARACTER or 
+                if (e.tpe == Event.BOMB_HIT_CHARACTER or
                     e.tpe == Event.CHARACTER_FOUND_EXIT or
                     e.tpe == Event.CHARACTER_KILLED_BY_MONSTER):
                     me = (e.character.x,e.character.y)
@@ -159,7 +159,7 @@ class TestCharacter(CharacterEntity):
                 wrld_v[x][y][4] = 1
             wrld_v[me[0]][me[1]][5] = 1
         return np.transpose(wrld_v)
-    
+
     def do(self, wrld):
         if self.approx_net is None:
             # create the neural network
@@ -171,7 +171,7 @@ class TestCharacter(CharacterEntity):
             self.place_bomb()
         else:
             self.move(dx,dy)
-        
+
     def __list_next_moves(self, wrld):
         '''
         Use self to determine position on board, return
@@ -204,10 +204,10 @@ class TestCharacter(CharacterEntity):
         # cannot drop a bomb if one is already there
         me = wrld.me(self)
         if me is not None:
-            
+
             if (me.x,me.y) == (x,y):
                 return False
-            
+
             if (x,y) == (me.x,me.y) and len(wrld.bombs) > 0:
                 return False
         return True
@@ -285,7 +285,7 @@ class TestCharacter(CharacterEntity):
         #q = self.__approx_q(wrld).item()
         #print("Q:", q, "TARGET: ", target, "R: ", r)
         return (q, target, final_state)
-        
+
     def __calc_next_move(self, wrld):
         '''
         @ray
