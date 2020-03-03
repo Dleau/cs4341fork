@@ -20,23 +20,26 @@ class BombNet(nn.Module):
     def __init__(self, wrld):
         super(BombNet, self).__init__()
         # input convolutional layers
-        self.conv1 = nn.Conv2d(6,12,(8,4),padding=(3,2))
+        #self.conv1 = nn.Conv2d(6,12,(8,4),padding=(3,2))
+        self.conv1 = nn.Conv2d(6,12,4,padding=2)
         #self.conv2 = nn.Conv2d(12,12,4,padding=2)
         # size
         size = wrld.width()*wrld.height()
         # hidden layer
-        self.lin1 = nn.Linear(1944,512)
+        self.lin1 = nn.Linear(2160,1024)
+        self.lin2 = nn.Linear(1024,512)
         # output layer
-        self.lin2 = nn.Linear(512,1)
+        self.lin3 = nn.Linear(512,1)
         self.size = size
         
     def forward(self, x):
         #x = F.max_pool2d(F.relu(self.conv1(x)),(2,2))
         #x = F.max_pool2d(F.relu(self.conv2(x)),(2,2))
         x = F.relu(self.conv1(x))
-        x = x.view(-1, 1944)
+        x = x.view(-1, 2160)
         x = F.relu(self.lin1(x))
-        x = self.lin2(x)
+        x = F.relu(self.lin2(x))
+        x = self.lin3(x)
         return x
 
 class TestCharacter(CharacterEntity):
@@ -84,7 +87,7 @@ class TestCharacter(CharacterEntity):
 
     def __update_nn(self,training_data):
         for wrld, ev, target in training_data:
-            print(target)
+            #print(target)
             #(wrld,ev,target) = training_data[-1]
             target = torch.tensor(np.asanyarray([[target]]),dtype=torch.float32)
             self.optimizer.zero_grad()
@@ -167,21 +170,27 @@ class TestCharacter(CharacterEntity):
             self.__init_nn(wrld, filename=self.nn_file)
         s_wrld = SensedWorld.from_world(wrld)
         (dx,dy) = self.__calc_next_move(s_wrld)
+        #(dx,dy) = self.__calc_next_interactive(s_wrld)
+        #(dx,dy) = self.__calc_next_path(s_wrld)
         self.me_pos = (self.me_pos[0]+dx,self.me_pos[1]+dy)
         if (dx,dy) == (0,0):
             self.place_bomb()
         else:
             self.move(dx,dy)
         
-    def __list_next_moves(self, wrld):
+    def __list_next_moves(self, wrld, move=None):
         '''
         Use self to determine position on board, return
         a list of coordinates representing legal next moves.
         Note: return tuples of move locations
         '''
         pairs = [] # keep legal pairs
-        character_x = wrld.me(self).x
-        character_y = wrld.me(self).y
+        if move is None:
+            character_x = wrld.me(self).x
+            character_y = wrld.me(self).y
+        else:
+            character_x = move[0]
+            character_y = move[1]
         for d_x in range(-1, 2):
             for d_y in range(-1, 2):
                 x = character_x + d_x
@@ -384,12 +393,47 @@ class TestCharacter(CharacterEntity):
         chosen_world = SensedWorld.from_world(wrld)
         chosen_world.me(self).move(dx,dy)
         (chosen_world, chosen_ev) = chosen_world.next()
-        (self.q, chosen_target, final_state) = self.calc_q(chosen_world, chosen_ev)
+        (self.q, chosen_target, final_state) = self.calc_q(chosen_world, chosen_ev,(dx,dy))
         if self.training is True:
             self.training_data.append([chosen_world,chosen_ev,chosen_target])
             if final_state is True:
                 print("Training...")
                 self.__update_nn(self.training_data)
         return (dx,dy)
-        
 
+
+    def __calc_next_path(self, wrld):
+        chosen_world = SensedWorld.from_world(wrld)
+        me = chosen_world.me(self)
+
+        queue = [(me.x,me.y)]
+        visited = {(me.x,me.y): None}
+        while queue:
+            s = queue.pop(0)
+            if s == wrld.exitcell:
+                break
+            for (dx,dy) in self.__list_next_moves(chosen_world,move=s):
+                move = (s[0]+dx,s[1]+dy)
+                if move not in visited:
+                    visited[move] = s
+                    queue.append(move)
+
+        end = wrld.exitcell
+        dx = None; dy = None
+        while True:
+            if visited[end] is None or visited[visited[end]] is None:
+                dx = end[0] - me.x
+                dy = end[1] - me.y
+                break
+            end = visited[end]
+        
+        me.move(dx,dy)
+
+        (chosen_world, chosen_ev) = chosen_world.next()
+        (self.q, chosen_target, final_state) = self.calc_q(chosen_world, chosen_ev,(dx,dy))
+        if self.training is True:
+            self.training_data.append([chosen_world,chosen_ev,chosen_target])
+            if final_state is True:
+                print("Training...")
+                self.__update_nn(self.training_data)
+        return (dx,dy)

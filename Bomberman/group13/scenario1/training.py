@@ -16,45 +16,50 @@ from testcharacter import TestCharacter
 
 from sensed_world import SensedWorld
 
-eps = 0.8
+eps = 0
 nn_filename = "model.pickle"
 games = 0
 won = 0
 try:
     #while eps > 0:
     while True:
-        # Create the game
-        random.seed(time.time())
-        g = Game.fromfile('map_blocked.txt')
-        g.world.time = 1200
-        
-        """
-        g.add_monster(SelfPreservingMonster("smart", 
-                                    "S",      
-                                    3, 14,
-                                    1      
-        ))"""
+        # epochs
+        sx = 0; sy = 0
+        for _ in range(1):
+            # Create the game
+            random.seed(time.time())
+            g = Game.fromfile('map_blocked.txt')
+            g.world.time = 1200
 
-        """
-        g.add_monster(SelfPreservingMonster("smart", 
-                                    "S",      
-                                    3, 10,
-                                    1      
-        ))"""
-                
-        
+            #sx = random.randrange(0,8)
+            #sy = random.randrange(0,19)
+            
+            """
+            g.add_monster(SelfPreservingMonster("smart", 
+                                        "S",      
+                                        3, 14,
+                                        1      
+            ))"""
 
-        our_char = TestCharacter("me","C", 0, 0, eps=eps, nn_file=nn_filename, training=True)
-        g.add_character(our_char)
+            """
+            g.add_monster(SelfPreservingMonster("smart", 
+                                        "S",      
+                                        3, 13,
+                                        1      
+            ))"""
+                    
+            
+            our_char = TestCharacter("me","C", sx, sy, eps=eps, nn_file=nn_filename, training=True)
+            g.add_character(our_char)
 
-        # Run!
-        g.go(1)
+            # Run!
+            g.go(1)
 
         games += 1
         
         # decrease epsilon
         if eps > 0:
-            eps *= 0.995
+            eps *= 0.95
         elif eps < 0:
             eps = 0
         print("EPS:", eps)
