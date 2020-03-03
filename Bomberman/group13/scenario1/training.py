@@ -16,11 +16,12 @@ from testcharacter import TestCharacter
 
 from sensed_world import SensedWorld
 
-eps = 1
-nn_filename = "model.pickle"
+eps = 0
+nn_filename = None
 games = 0
 won = 0
 try:
+    #while eps > 0:
     while True:
         # Create the game
         random.seed(time.time())
@@ -37,10 +38,10 @@ try:
         """
         g.add_monster(SelfPreservingMonster("smart", 
                                     "S",      
-                                    3, 5,
+                                    3, 10,
                                     1      
-        ))
-        """
+        ))"""
+                
         
 
         our_char = TestCharacter("me","C", 0, 0, eps=eps, nn_file=nn_filename, training=True)
@@ -53,7 +54,7 @@ try:
         
         # decrease epsilon
         if eps > 0:
-            eps -= 0.001
+            eps -= 0.01
         elif eps < 0:
             eps = 0
         print("EPS:", eps)
