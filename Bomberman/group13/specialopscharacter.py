@@ -6,66 +6,97 @@ from entity import CharacterEntity
 from colorama import Fore, Back
 from sensed_world import SensedWorld
 from random import uniform, randrange
-from math import inf
+from math import inf, sqrt
 
 class SpecialOpsCharacter(CharacterEntity):
 
     # NOTE use approx_qlearning.png!!!, literally following that to the letter
-    # action, a.k.a "a" in the formula, is a destination (x, y) tuple
+    # action, a.k.a "a" in the formula, is (dx, dy) tuple
+        
+    # order of determination: max a, delta, weights, q
 
     def __init__(self, name, avatar, x, y):
         # @dillon
         super().__init__(name, avatar, x, y)
-        self.alpha = 0 # alpha value for use in q-learning formula
-        self.gamma = 0 # gamma value, likewise
-        self.epsilon = 0.01 # epsilon value, likewise
+        self.alpha = 0.25 # alpha value for use in q-learning formula
+        self.gamma = 0.01 # gamma value, likewise
+        self.epsilon = 0 # epsilon value, likewise
         self.q = 0
-        self.weights = {f.__name__: 0 for f in self.__functions()} # function name -> weight
+        self.weights = {f.__name__: 1 for f in self.__functions()} # function name -> weight
+        self.max_a = 0
 
     def do(self, world):
         # Commands
         ''' @dillon
-        Character won't go anywhere, function isn't done
+        Does the next move
         '''
+        # gets the next best action using max a
         dx, dy = self.__next_action(world)
+        # updates the function weights using max a and delta
+        for function in self.__functions():
+            self.__w_i(world, (dx, dy), function)
+        # determines a q value for this state
+        self.q = self.__q(world, (dx, dy)) 
         if (dx, dy) == (0, 0):
             self.place_bomb()
         else:
             self.move(dx, dy)
+        print(self.weights)
+        print('q', self.q)
             
     def __next_action(self, world):
+        ''' @dillon
+        Considers possible (dx, dy) actions from current position,
+        either explores or exploits. Exploitation uses max a to find
+        optimal (dx, dy) action.
+        '''
         possible_actions = self.__list_next_moves(world)
         z = uniform(0, 1)
-        a = None # next action
         if z < self.epsilon: # exploration
-            a = possible_actions[randrange(0, len(next_moves))] # pick random action
+            return possible_actions[randrange(0, len(possible_actions))] # pick random action
         else: # exploitation
-            max_q = -inf
-            for possible_action in possible_actions:
-                q = self.__q(world, possible_action)
-                if q > max_q:
-                    max_q = q
-                    a = possible_action
-        x, y = self.__s(world)
-        ax, ay = a
-        return (ax - x, ay - y)
+            return self.__max_a(world)
       
     def __functions(self):
         ''' @dillon
         List f1 through fn
         Every function must take ONLY world and action as args
         '''
-        # these are just examples
-        return [self.__distance_to_goal, self.__distance_to_bomb, self.__distance_to_monster]
+        return [self.__distance_to_goal, self.__bomb_threats, self.__distance_to_monster]
         
     def __distance_to_goal(self, world, action):
-        return 0.5 # TODO possibly implement
+        ''' @dillon
+        Euclidian distance to the goal
+        '''
+        goal_loc = world.exitcell
+        return sqrt(pow((goal_loc[0] - action[0]),2) + pow((goal_loc[1] - action[1]),2))
         
-    def __distance_to_bomb(self, world, action):
-        return 0.5 # TODO possibly implement
+    def __bomb_threats(self, world, action):
+        ''' @dillon
+        Number of threatening bombs
+        '''
+        bomb_threats = 0
+        for dx in range(0, world.width()):
+            if world.bomb_at(dx, action[1]):
+                bomb_threats += 1
+        for dy in range(0, world.height()):
+            if world.bomb_at(action[0], dy):
+                bomb_threats += 1
+        return bomb_threats
         
     def __distance_to_monster(self, world, action):
-        return 0.5 # TODO possibly implement
+        ''' @dillon
+        Euclidian distance to the closest monster
+        '''
+        distances = [] # distances to monsters
+        monsters = [l[0] for l in list(world.monsters.values())] # list of monsters
+        for monster in monsters:
+            x, y = self.__s(world)
+            d_x, d_y = x - monster.x, y - monster.y
+            distance = sqrt(pow(d_x, 2) + pow(d_y, 2))
+            distances.append(distance)
+        # return 0 if len(distances) == 0 else 1 / (min(distances) + 1)
+        return 0 if not len(distances) else min(distances)
             
     def __q(self, world, action):
         ''' @dillon
@@ -84,7 +115,7 @@ class SpecialOpsCharacter(CharacterEntity):
         Delta assignment, approximate q-learning
         '''
         r = self.__r(world, action)
-        max_a = self.__max_a(world, action)
+        max_a = self.max_a
         q = self.__q(world, action)
         return (r + self.gamma * max_a) - q
         
@@ -98,39 +129,27 @@ class SpecialOpsCharacter(CharacterEntity):
         self.weights[function.__name__] = w_i + self.alpha * delta * f_i # update weight val
         
     def __r(self, world, action):
-        ''' @dillon, basically @ray's original code
+        ''' @dillon
         Reward assignment, approximate q-learning
+        This would likely need to be adjusted
         '''
-        s_x, s_y = self.__s(world) # current position or state, (x, y)
-        a_x, a_y = action # split action into x and y
-        dx, dy = a_x - s_x, a_y - s_y # get directional deltas
-        clone = SensedWorld.from_world(world) # clone world for manipulation
-        me = clone.me(self) # get cloned character
-        if me is None: return -1000 # death occured, reward is a terrible -1000
-        me.move(dx, dy) # character is alive, make move
-        clone, _ = clone.next() # get next iteration of cloned world, re-assign
-        d_score = clone.scores['me'] - world.scores['me'] # score delta between worlds
-        return d_score +- self.__distance_to_goal(world, action) # incentivize distance to goal
+        return -self.__distance_to_goal(world, action)
         
-    def __max_a(self, world, action):
-        '''
+    def __max_a(self, world):
+        ''' @dillon
         max a assignment, approximate q-learnings
         '''
-        x, y = self.__s(world) # current position or state, (x, y)
-        a_x, a_y = action # split action into x and y
-        dx, dy = a_x - x, a_y - y # get directional deltas
-        clone = SensedWorld.from_world(world) # clone world for manipulation
-        max_a = 0 # TODO
-        while self.__within_bounds(world, x, y): # location is within bounds of board
-            me = clone.me(self) # find character on the cloned board
-            if me is None: # the character has died
-                return max_a
-            me.move(dx, dy) # move the character
-            clone, _ = clone.next() # simulate the next iteration of the world
-            q = self.__q(self, clone, action) # calculate q
-            if q > max_a: # re-assign if necessary
-                max_a = q
-        return max_a
+        possible_actions = self.__list_next_moves(world) # list of dx, dy
+        clone = SensedWorld.from_world(world)
+        max_q = -inf
+        max_action = None
+        for action in possible_actions:
+            q = self.__q(clone, action)
+            if q > max_q:
+                max_q = q
+                max_action = action
+        self.max_a = max_q
+        return max_action
         
     def __s(self, world):
         ''' @dillon
@@ -139,13 +158,13 @@ class SpecialOpsCharacter(CharacterEntity):
         return (world.me(self).x, world.me(self).y)
         
     def __within_bounds(self, world, x, y):
-        '''
+        ''' @joe or @ray idk
         Is a location within the bounds of the board?
         '''
         return x < world.width() and y < world.height() and x >= 0 and y >= 0
         
     def __list_next_moves(self, world):
-        '''
+        ''' @someone
         Use self to determine position on board, return
         a list of coordinates representing legal next moves.
         Note: return tuples of move locations
@@ -157,5 +176,5 @@ class SpecialOpsCharacter(CharacterEntity):
                 x = character_x + d_x
                 y = character_y + d_y
                 if self.__within_bounds(world, x, y): # adjust w/ walls probably
-                    pairs.append((x, y))
+                    pairs.append((d_x, d_y))
         return pairs
