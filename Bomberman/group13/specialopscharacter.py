@@ -17,7 +17,7 @@ class SpecialOpsCharacter(CharacterEntity):
         
     # order of determination: max a, delta, weights, q
 
-    def __init__(self, name, avatar, x, y,eps=1, weights=None):
+    def __init__(self, name, avatar, x, y,eps=0, weights=None):
         # @dillon
         super().__init__(name, avatar, x, y)
         self.alpha = 0.01 # alpha value for use in q-learning formula
