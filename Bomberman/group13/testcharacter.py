@@ -17,28 +17,21 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 class BombNet(nn.Module):
-    def __init__(self, wrld):
+    def __init__(self):
         super(BombNet, self).__init__()
         # input convolutional layers
-        #self.conv1 = nn.Conv2d(6,12,(8,4),padding=(3,2))
-        self.conv1 = nn.Conv2d(6,12,4,padding=2)
-        #self.conv2 = nn.Conv2d(12,12,4,padding=2)
-        # size
-        size = wrld.width()*wrld.height()
+        self.conv1 = nn.Conv2d(6,12,(8,4),padding=(3,2))
         # hidden layer
-        self.lin1 = nn.Linear(2160,1024)
-        self.lin2 = nn.Linear(1024,512)
+        self.lin1 = nn.Linear(1944,512)
+        self.lin2 = nn.Linear(512,256)
         # output layer
-        self.lin3 = nn.Linear(512,1)
-        self.size = size
+        self.lin3 = nn.Linear(256,1)
 
     def forward(self, x):
-        #x = F.max_pool2d(F.relu(self.conv1(x)),(2,2))
-        #x = F.max_pool2d(F.relu(self.conv2(x)),(2,2))
-        x = F.relu(self.conv1(x))
-        x = x.view(-1, 2160)
-        x = F.relu(self.lin1(x))
-        x = F.relu(self.lin2(x))
+        x = torch.sigmoid(self.conv1(x))
+        x = x.view(-1, 1944)
+        x = torch.sigmoid(self.lin1(x))
+        x = torch.sigmoid(self.lin2(x))
         x = self.lin3(x)
         return x
 
@@ -62,7 +55,7 @@ class TestCharacter(CharacterEntity):
             with open(filename,"rb") as f:
                 self.approx_net = torch.load(f)
         else:
-            self.approx_net = BombNet(wrld)
+            self.approx_net = BombNet()
         self.optimizer = optim.Adam(self.approx_net.parameters(),lr=self.alpha)
         self.criterion = nn.MSELoss()
 
@@ -75,65 +68,22 @@ class TestCharacter(CharacterEntity):
         x = x.unsqueeze(0)
         out = self.approx_net(x)
         return out
-    """
-    def __update_nn(self,wrld,target):
-        target = torch.tensor(np.asanyarray([[target]]),dtype=torch.float32)
-        self.optimizer.zero_grad()
-        output = self.__approx_q(wrld)
-        loss = self.criterion(output,target)
-        loss.backward()
-        self.optimizer.step()
-    """
 
     def __update_nn(self,training_data):
-        for wrld, ev, target in training_data:
+        for data in training_data:
+            wrld, ev, target = data
             #print(target)
-            #(wrld,ev,target) = training_data[-1]
             target = torch.tensor(np.asanyarray([[target]]),dtype=torch.float32)
             self.optimizer.zero_grad()
             output = self.__approx_q(wrld,ev)
             loss = self.criterion(output,target)
             loss.backward()
             self.optimizer.step()
-    """
-    def __get_wrld_v(self, wrld):
-        wrld_v = np.ndarray((6,6,6))
-        me = wrld.me(self)
-        if me is None:
-            me = self.me_pos
-        else:
-            me = (me.x,me.y)
-        # 'me' position
-        for idx in np.ndindex((6,6)):
-            # vision indices
-            x_v = idx[0]
-            y_v = idx[1]
-            # board indices
-            x = idx[0] + me[0] - 2
-            y = idx[1] + me[1] - 2
-            if not self.__within_bounds(wrld,x,y):
-                wrld_v[x_v][y_v][:] = 0
-                continue
-            # what is at a cell
-            wrld_v[x_v][y_v][:] = 0.5
-            if wrld.wall_at(x,y):
-                wrld_v[x_v][y_v][0] = 1
-            if wrld.exit_at(x,y):
-                wrld_v[x_v][y_v][1] = 1
-            if wrld.bomb_at(x,y) is not None:
-                wrld_v[x_v][y_v][2] = 1
-            if wrld.explosion_at(x,y) is not None:
-                wrld_v[x_v][y_v][3] = 1
-            if wrld.monsters_at(x,y) is not None:
-                wrld_v[x_v][y_v][4] = 1
-            x_v = 2
-            y_v = 2
-            wrld_v[x_v][y_v][5] = 1
-        return wrld_v
-    """
+
+            print('loss:', loss.item())
 
     def __get_wrld_v(self,wrld,ev):
-        wrld_v = np.ndarray((wrld.width(),wrld.height(),6))
+        wrld_v = np.ndarray((6,wrld.height(),wrld.width()))
         me = wrld.me(self)
         if me is None:
             for e in ev:
@@ -145,33 +95,36 @@ class TestCharacter(CharacterEntity):
                     me = (e.character.x,e.character.y)
         else:
             me = (me.x,me.y)
+        wrld_v.fill(0)
         # 'me' position
         for idx in np.ndindex((wrld.width(),wrld.height())):
             x = idx[0]
             y = idx[1]
+            y_rev = wrld.height() - y - 1
             # what is at a cell
-            wrld_v[x][y][:] = 0
             if wrld.wall_at(x,y):
-                wrld_v[x][y][0] = 1
+                wrld_v[0][y_rev][x] = 1
             if wrld.exit_at(x,y):
-                wrld_v[x][y][1] = 1
+                wrld_v[1][y_rev][x] = 1
             if wrld.bomb_at(x,y) is not None:
-                wrld_v[x][y][2] = 1
+                wrld_v[2][y_rev][x] = 1
             if wrld.explosion_at(x,y) is not None:
-                wrld_v[x][y][3] = 1
+                wrld_v[3][y_rev][x] = 1
             if wrld.monsters_at(x,y) is not None:
-                wrld_v[x][y][4] = 1
-            wrld_v[me[0]][me[1]][5] = 1
-        return np.transpose(wrld_v)
+                wrld_v[4][y_rev][x] = 1
+            wrld_v[5][wrld.height()-me[1]-1][me[0]] = 1
+        #print(wrld_v)
+        #sys.exit(0)
+        return wrld_v
 
     def do(self, wrld):
         if self.approx_net is None:
             # create the neural network
             self.__init_nn(wrld, filename=self.nn_file)
         s_wrld = SensedWorld.from_world(wrld)
-        (dx,dy) = self.__calc_next_move(s_wrld)
+        #(dx,dy) = self.__calc_next_move(s_wrld)
         #(dx,dy) = self.__calc_next_interactive(s_wrld)
-        #(dx,dy) = self.__calc_next_path(s_wrld)
+        (dx,dy) = self.__calc_next_path(s_wrld)
         self.me_pos = (self.me_pos[0]+dx,self.me_pos[1]+dy)
         if (dx,dy) == (0,0):
             self.place_bomb()
@@ -394,6 +347,7 @@ class TestCharacter(CharacterEntity):
         chosen_world.me(self).move(dx,dy)
         (chosen_world, chosen_ev) = chosen_world.next()
         (self.q, chosen_target, final_state) = self.calc_q(chosen_world, chosen_ev,(dx,dy))
+        print(self.q)
         if self.training is True:
             self.training_data.append([chosen_world,chosen_ev,chosen_target])
             if final_state is True:
@@ -405,32 +359,52 @@ class TestCharacter(CharacterEntity):
     def __calc_next_path(self, wrld):
         chosen_world = SensedWorld.from_world(wrld)
         me = chosen_world.me(self)
-
-        queue = [(me.x,me.y)]
-        visited = {(me.x,me.y): None}
-        while queue:
-            s = queue.pop(0)
-            if s == wrld.exitcell:
-                break
-            for (dx,dy) in self.__list_next_moves(chosen_world,move=s):
-                move = (s[0]+dx,s[1]+dy)
-                if move not in visited:
-                    visited[move] = s
-                    queue.append(move)
-
-        end = wrld.exitcell
         dx = None; dy = None
-        while True:
-            if visited[end] is None or visited[visited[end]] is None:
-                dx = end[0] - me.x
-                dy = end[1] - me.y
-                break
-            end = visited[end]
-        
-        me.move(dx,dy)
 
-        (chosen_world, chosen_ev) = chosen_world.next()
-        (self.q, chosen_target, final_state) = self.calc_q(chosen_world, chosen_ev,(dx,dy))
+        x = uniform(0, 1)
+        if x > self.eps:
+            print("EXPLOIT")
+            next_moves = self.__list_next_moves(wrld)
+            max_q = -inf
+            for move in next_moves:
+                c_wrld = SensedWorld.from_world(wrld)
+                c_wrld.me(self).move(move[0],move[1])
+                (c_wrld, ev) = c_wrld.next()
+                (cur_q, cur_target, cur_fs) = self.calc_q(c_wrld, ev, move)
+                if cur_q > max_q:
+                    max_q = cur_q
+                    (dx,dy) = move
+                    chosen_world = c_wrld
+                    chosen_target = cur_target
+                    chosen_ev = ev
+                    final_state = cur_fs
+            self.q = max_q
+        else:
+            print("EXPLORE")
+            queue = [(me.x,me.y)]
+            visited = {(me.x,me.y): None}
+            while queue:
+                s = queue.pop(0)
+                if s == wrld.exitcell:
+                    break
+                for (dx,dy) in self.__list_next_moves(chosen_world,move=s):
+                    move = (s[0]+dx,s[1]+dy)
+                    if move not in visited:
+                        visited[move] = s
+                        queue.append(move)
+
+            end = wrld.exitcell
+            while True:
+                if visited[end] is None or visited[visited[end]] is None:
+                    dx = end[0] - me.x
+                    dy = end[1] - me.y
+                    break
+                end = visited[end]
+        
+            me.move(dx,dy)
+            (chosen_world, chosen_ev) = chosen_world.next()
+            (self.q, chosen_target, final_state) = self.calc_q(chosen_world, chosen_ev,(dx,dy))
+        
         if self.training is True:
             self.training_data.append([chosen_world,chosen_ev,chosen_target])
             if final_state is True:

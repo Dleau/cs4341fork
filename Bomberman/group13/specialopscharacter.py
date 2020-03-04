@@ -15,14 +15,17 @@ class SpecialOpsCharacter(CharacterEntity):
         
     # order of determination: max a, delta, weights, q
 
-    def __init__(self, name, avatar, x, y):
+    def __init__(self, name, avatar, x, y,eps=1, weights=None):
         # @dillon
         super().__init__(name, avatar, x, y)
-        self.alpha = 0.25 # alpha value for use in q-learning formula
-        self.gamma = 0.01 # gamma value, likewise
-        self.epsilon = 0 # epsilon value, likewise
+        self.alpha = 0.01 # alpha value for use in q-learning formula
+        self.gamma = 0.9 # gamma value, likewise
+        self.epsilon = eps # epsilon value, likewise
         self.q = 0
-        self.weights = {f.__name__: 1 for f in self.__functions()} # function name -> weight
+        if weights is None:
+            self.weights = {f.__name__: 1 for f in self.__functions()} # function name -> weight
+        else:
+            self.weights = weights
         self.max_a = 0
 
     def do(self, world):
@@ -62,14 +65,58 @@ class SpecialOpsCharacter(CharacterEntity):
         List f1 through fn
         Every function must take ONLY world and action as args
         '''
-        return [self.__distance_to_goal, self.__bomb_threats, self.__distance_to_monster]
+        return [self.__goal_dist_score, self.__bomb_threats, 
+            self.__distance_to_monster, self.__goal_blocked_score]
         
-    def __distance_to_goal(self, world, action):
-        ''' @dillon
-        Euclidian distance to the goal
+    def __goal_dist_score(self, world, action):
+        ''' @ray
+        BFS distance to the goal, 0 if blocked
         '''
         goal_loc = world.exitcell
-        return sqrt(pow((goal_loc[0] - action[0]),2) + pow((goal_loc[1] - action[1]),2))
+        char_pos = (world.me(self).x+action[0],world.me(self).y+action[1])
+        #goal_dist = sqrt(pow((goal_loc[0] - action[0]),2) + pow((goal_loc[1] - action[1]),2))
+        path = self.__bfs(world,char_pos,goal_loc)
+        if not path[1]:
+            return 0
+        return (1/len(path[0])+1)
+    
+    def __goal_blocked_score(self, world, action):
+        ''' @ray
+        1 if unblocked, 0 if blocked
+        '''
+        goal_loc = world.exitcell
+        char_pos = (world.me(self).x+action[0],world.me(self).y+action[1])
+        path = self.__bfs(world,char_pos,goal_loc)
+        return 1 if path[1] else 0
+    
+    def __bfs(self, world, fr, to):
+        ''' @ray
+        Returns the path from 'from' to 'to'
+        if the path doesn't exist then it returns
+        the incomplete path
+        (path, True) if complete
+        (path, False) if incomplete
+        '''
+        queue = [fr]
+        came_from = {fr: None}
+        while queue:
+            s = queue.pop(0)
+            if s == to:
+                break
+            for neighbor in self.__list_neighbors(world,s):
+                if neighbor not in came_from:
+                    came_from[neighbor] = s
+                    queue.append(neighbor)
+        path = []
+        complete = False
+        while to is not None:
+            path = [to] + path
+            if to in came_from and fr == came_from[to]:
+                complete = True
+            if to not in came_from:
+                break
+            to = came_from[to]
+        return (path, complete)
         
     def __bomb_threats(self, world, action):
         ''' @dillon
@@ -82,7 +129,7 @@ class SpecialOpsCharacter(CharacterEntity):
         for dy in range(0, world.height()):
             if world.bomb_at(action[0], dy):
                 bomb_threats += 1
-        return bomb_threats
+        return 1-(1/(bomb_threats+1))
         
     def __distance_to_monster(self, world, action):
         ''' @dillon
@@ -95,8 +142,8 @@ class SpecialOpsCharacter(CharacterEntity):
             d_x, d_y = x - monster.x, y - monster.y
             distance = sqrt(pow(d_x, 2) + pow(d_y, 2))
             distances.append(distance)
-        # return 0 if len(distances) == 0 else 1 / (min(distances) + 1)
-        return 0 if not len(distances) else min(distances)
+        return 1 if len(distances) == 0 else 1-(1/(min(distances) + 1))
+        #return 0 if not len(distances) else min(distances)
             
     def __q(self, world, action):
         ''' @dillon
@@ -133,7 +180,8 @@ class SpecialOpsCharacter(CharacterEntity):
         Reward assignment, approximate q-learning
         This would likely need to be adjusted
         '''
-        return -self.__distance_to_goal(world, action)
+        #return -self.__distance_to_goal(world, action)
+        return -1
         
     def __max_a(self, world):
         ''' @dillon
@@ -175,6 +223,23 @@ class SpecialOpsCharacter(CharacterEntity):
             for d_y in range(-1, 2):
                 x = character_x + d_x
                 y = character_y + d_y
-                if self.__within_bounds(world, x, y): # adjust w/ walls probably
+                if (self.__within_bounds(world, x, y) 
+                        and not world.wall_at(x,y)):
                     pairs.append((d_x, d_y))
+        return pairs
+    
+    def __list_neighbors(self, world, pos):
+        ''' @ray
+        Lists neighbors given a position
+        '''
+        pairs = [] # keep legal pairs
+        for d_x in range(-1, 2):
+            for d_y in range(-1, 2):
+                if d_x == 0 and d_y == 0:
+                    continue
+                x = pos[0] + d_x
+                y = pos[1] + d_y
+                if (self.__within_bounds(world, x, y) 
+                        and not world.wall_at(x,y)):
+                    pairs.append((x, y))
         return pairs
