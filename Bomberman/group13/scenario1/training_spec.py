@@ -17,16 +17,21 @@ from specialopscharacter import SpecialOpsCharacter
 
 from sensed_world import SensedWorld
 
-training = False
+training = True
 interactive = False
 eps = 0.8
 games = 0
 sx = 0; sy = 0
-weights = {'__goal_dist_score': 0.8084695703881198, '__bomb_threats': 1.0, '__distance_to_monster': 0.8494102513595749, '__goal_blocked_score': 0.8259362740838581}
+
+#weights = {'__goal_dist_score': 0.8084695703881198, '__bomb_threats': 1.0, '__distance_to_monster': 0.8494102513595749, '__goal_blocked_score': 0.8259362740838581}
+
+weights = None
+
 while eps > 0.1 or not training:
     # Create the game
     random.seed(time.time())
     g = Game.fromfile('map_blocked.txt')
+    #g = Game.fromfile('map.txt')
     g.world.time = 1200
 
     #sx = random.randrange(0,8)

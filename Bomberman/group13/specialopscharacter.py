@@ -7,6 +7,7 @@ from colorama import Fore, Back
 from sensed_world import SensedWorld
 from random import uniform, randrange
 from math import inf, sqrt
+from time import sleep
 
 class SpecialOpsCharacter(CharacterEntity):
 
@@ -33,6 +34,8 @@ class SpecialOpsCharacter(CharacterEntity):
         ''' @dillon
         Does the next move
         '''
+        #sleep(0.5) # helpful for debugging
+        input() # alternative, also helpful
         # gets the next best action using max a
         dx, dy = self.__next_action(world)
         # updates the function weights using max a and delta
@@ -44,8 +47,9 @@ class SpecialOpsCharacter(CharacterEntity):
             self.place_bomb()
         else:
             self.move(dx, dy)
-        print(self.weights)
+        #print(self.weights)
         print('q', self.q)
+        print('epsilon', self.epsilon)
             
     def __next_action(self, world):
         ''' @dillon
@@ -53,7 +57,7 @@ class SpecialOpsCharacter(CharacterEntity):
         either explores or exploits. Exploitation uses max a to find
         optimal (dx, dy) action.
         '''
-        possible_actions = self.__list_next_moves(world)
+        possible_actions = self.__possible_actions(world)
         z = uniform(0, 1)
         if z < self.epsilon: # exploration
             return possible_actions[randrange(0, len(possible_actions))] # pick random action
@@ -180,19 +184,20 @@ class SpecialOpsCharacter(CharacterEntity):
         Reward assignment, approximate q-learning
         This would likely need to be adjusted
         '''
-        #return -self.__distance_to_goal(world, action)
-        return -1
+        return -self.__goal_dist_score(world, action)
+        #return -1
         
     def __max_a(self, world):
         ''' @dillon
         max a assignment, approximate q-learnings
         '''
-        possible_actions = self.__list_next_moves(world) # list of dx, dy
+        possible_actions = self.__possible_actions(world) # list of dx, dy
         clone = SensedWorld.from_world(world)
         max_q = -inf
         max_action = None
         for action in possible_actions:
             q = self.__q(clone, action)
+            print(action, q)
             if q > max_q:
                 max_q = q
                 max_action = action
@@ -211,7 +216,7 @@ class SpecialOpsCharacter(CharacterEntity):
         '''
         return x < world.width() and y < world.height() and x >= 0 and y >= 0
         
-    def __list_next_moves(self, world):
+    def __possible_actions(self, world):
         ''' @someone
         Use self to determine position on board, return
         a list of coordinates representing legal next moves.
