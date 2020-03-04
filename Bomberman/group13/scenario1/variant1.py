@@ -11,6 +11,7 @@ sys.path.insert(1, '../groupNN')
 
 # Uncomment this if you want the empty test character
 from testcharacter import TestCharacter
+from specialopscharacter import SpecialOpsCharacter
 
 # Uncomment this if you want the interactive character
 from interactivecharacter import InteractiveCharacter
