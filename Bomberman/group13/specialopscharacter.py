@@ -8,6 +8,7 @@ from sensed_world import SensedWorld
 from random import uniform, randrange
 from math import inf, sqrt
 from time import sleep
+from events import Event
 
 class SpecialOpsCharacter(CharacterEntity):
 
@@ -29,7 +30,7 @@ class SpecialOpsCharacter(CharacterEntity):
             self.weights = weights
         self.max_a = 0
         self.clone = None
-        self.events = None
+        self.events = []
 
     def do(self, world):
         # Commands
@@ -50,8 +51,8 @@ class SpecialOpsCharacter(CharacterEntity):
         else:
             self.move(dx, dy)
         #print(self.weights)
-        print('q', self.q)
-        print('epsilon', self.epsilon)
+        #print('q', self.q)
+        #print('epsilon', self.epsilon)
             
     def __next_action(self, world):
         ''' @dillon
@@ -167,7 +168,7 @@ class SpecialOpsCharacter(CharacterEntity):
         ''' @dillon
         Delta assignment, approximate q-learning
         '''
-        r = self.__r(world, action)
+        r = self.__r()
         max_a = self.max_a
         q = self.__q(world, action)
         return (r + self.gamma * max_a) - q
@@ -181,27 +182,41 @@ class SpecialOpsCharacter(CharacterEntity):
         f_i = function(world, action)
         self.weights[function.__name__] = w_i + self.alpha * delta * f_i # update weight val
         
-    def __r(self, world, action):
-        ''' @dillon
-        Reward assignment, approximate q-learning
-        This would likely need to be adjusted
+    def __r(self):
+        ''' @ray
+        calculates the reward for a given action
         '''
-        #return -self.__goal_dist_score(world, action)
-        return -1
+        ev = self.events
+        r = 0
+        for event in ev:
+            if event.tpe == Event.CHARACTER_FOUND_EXIT:
+                r += 10
+            elif event.tpe == Event.CHARACTER_KILLED_BY_MONSTER:
+                r -= 100
+            elif event.tpe == Event.BOMB_HIT_CHARACTER:
+                r -= 100
+            elif event.tpe == Event.BOMB_HIT_MONSTER:
+                r += 0.1
+            elif event.tpe == Event.BOMB_HIT_WALL:
+                r += 0.05
+        r -= 0.001
+        return r
         
     def __max_a(self, world):
         ''' @dillon
         max a assignment, approximate q-learnings
         '''
         possible_actions = self.__possible_actions(world) # list of dx, dy
-        max_q = -inf
+        max_q = -100
         max_action = None
         c = None # max a clone
-        max_ev = None
+        max_ev = []
         for action in possible_actions:
             clone = SensedWorld.from_world(world)
             me = clone.me(self)
             if me is None:
+                if max_action is None:
+                    max_action = action
                 continue
             dx, dy = action
             me.move(dx, dy)
@@ -209,6 +224,8 @@ class SpecialOpsCharacter(CharacterEntity):
             self.clone = clone
             me = clone.me(self)
             if me is None:
+                if max_action is None:
+                    max_action = action
                 continue
             q = self.__q(clone, action)
             if q > max_q:
@@ -218,7 +235,7 @@ class SpecialOpsCharacter(CharacterEntity):
                 max_ev = ev
         self.max_a = max_q
         self.clone = c
-        self.events = ev
+        self.events = max_ev
         return max_action
         
     def __s(self, world):
