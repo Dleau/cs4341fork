@@ -90,7 +90,7 @@ class SpecialOpsCharacter(CharacterEntity):
         goal_loc = world.exitcell
         char_pos = (world.me(self).x+action[0],world.me(self).y+action[1])
         #goal_dist = sqrt(pow((goal_loc[0] - action[0]),2) + pow((goal_loc[1] - action[1]),2))
-        path = self.__a_star(world,char_pos,goal_loc)
+        path = self.__bfs(world,char_pos,goal_loc)
         if not path[1]:
             return 1
         return 1/(len(path[0])+1)
@@ -160,7 +160,6 @@ class SpecialOpsCharacter(CharacterEntity):
                     priority = new_cost + sqrt(pow((goal[0] - next[0]),2) + pow((goal[1] - next[1]),2))
                     frontier.put(next, priority)
                     came_from[next] = current
-
         path = []
         complete = False
         while to is not None:
@@ -184,7 +183,7 @@ class SpecialOpsCharacter(CharacterEntity):
         for dy in range(0, world.height()):
             if world.bomb_at(action[0], dy):
                 bomb_threats += 1
-        return (1/(bomb_threats+1))
+        return 1-(1/(bomb_threats+1))
         
     def __distance_to_monster(self, world, action):
         ''' @dillon
@@ -242,9 +241,9 @@ class SpecialOpsCharacter(CharacterEntity):
             if event.tpe == Event.CHARACTER_FOUND_EXIT:
                 r += 10
             elif event.tpe == Event.CHARACTER_KILLED_BY_MONSTER:
-                r -= 100
+                r -= 1000
             elif event.tpe == Event.BOMB_HIT_CHARACTER:
-                r -= 100
+                r -= 1000
             elif event.tpe == Event.BOMB_HIT_MONSTER:
                 r += 0.1
             elif event.tpe == Event.BOMB_HIT_WALL:
@@ -300,8 +299,9 @@ class SpecialOpsCharacter(CharacterEntity):
             for d_y in range(-1, 2):
                 x = character_x + d_x
                 y = character_y + d_y
+                """
                 if d_x == 0 and d_y == 0:
-                    continue
+                    continue"""
                 if (self.__within_bounds(world, x, y) 
                         and not world.wall_at(x,y)):
                     pairs.append((d_x, d_y))
