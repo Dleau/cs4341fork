@@ -16,7 +16,7 @@ class SpecialOpsCharacter(CharacterEntity):
         
     # order of determination: max a, delta, weights, q
 
-    def __init__(self, name, avatar, x, y,eps=1, weights=None):
+    def __init__(self, name, avatar, x, y,eps=0, weights=None):
         # @dillon
         super().__init__(name, avatar, x, y)
         self.alpha = 0.01 # alpha value for use in q-learning formula
@@ -35,7 +35,7 @@ class SpecialOpsCharacter(CharacterEntity):
         Does the next move
         '''
         #sleep(0.5) # helpful for debugging
-        input() # alternative, also helpful
+        #input() # alternative, also helpful
         # gets the next best action using max a
         dx, dy = self.__next_action(world)
         # updates the function weights using max a and delta
@@ -43,10 +43,14 @@ class SpecialOpsCharacter(CharacterEntity):
             self.__w_i(world, (dx, dy), function)
         # determines a q value for this state
         self.q = self.__q(world, (dx, dy)) 
+        self.move(dx, dy)
+
+        '''
         if (dx, dy) == (0, 0):
             self.place_bomb()
         else:
             self.move(dx, dy)
+            '''
         #print(self.weights)
         print('q', self.q)
         print('epsilon', self.epsilon)
@@ -79,7 +83,7 @@ class SpecialOpsCharacter(CharacterEntity):
         goal_loc = world.exitcell
         char_pos = (world.me(self).x+action[0],world.me(self).y+action[1])
         #goal_dist = sqrt(pow((goal_loc[0] - action[0]),2) + pow((goal_loc[1] - action[1]),2))
-        path = self.__bfs(world,char_pos,goal_loc)
+        path = self.__a_star(world,char_pos,goal_loc)
         if not path[1]:
             return 0
         return (1/len(path[0])+1)
@@ -113,6 +117,52 @@ class SpecialOpsCharacter(CharacterEntity):
                     queue.append(neighbor)
         path = []
         complete = False
+        while to is not None:
+            path = [to] + path
+            if to in came_from and fr == came_from[to]:
+                complete = True
+            if to not in came_from:
+                break
+            to = came_from[to]
+        return (path, complete)
+
+    def __a_star(self, world, fr, to):
+        ''' @Joe
+        Returns the path from 'from' to 'to'
+        if the path doesn't exist then it returns
+        the incomplete path
+        (path, True) if complete
+        (path, False) if incomplete
+        '''
+        queue = [fr]
+        came_from = {None: fr}
+        best_val = inf
+        best_next_node = None
+        while queue:
+            best_val = inf
+            curr_node = queue.pop(0)
+            if curr_node == to:
+                break
+            for neighbor in self.__list_neighbors(world,curr_node):
+                if neighbor not in came_from:
+                    # g is distance from current node to the start node
+                    g = sqrt(pow((neighbor[0] - curr_node[0]),2) + pow((neighbor[1] - curr_node[1]),2));
+                    # h is the distance from end node to current node
+                    h = sqrt(pow((to[0] - neighbor[0]),2) + pow((to[1] - neighbor[1]),2));
+                    f = g + h
+                    if f < best_val:
+                        best_val = f
+                        best_next_node = neighbor
+                        came_from[curr_node] = neighbor
+            queue.append(best_next_node)
+        path = []
+        complete = False
+
+        came_from_reversed = {}
+        for k, v in came_from.items():
+            came_from_reversed[v] = k
+        came_from = came_from_reversed
+
         while to is not None:
             path = [to] + path
             if to in came_from and fr == came_from[to]:

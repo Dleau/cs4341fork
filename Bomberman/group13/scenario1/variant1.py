@@ -11,6 +11,7 @@ sys.path.insert(1, '../groupNN')
 
 # Uncomment this if you want the empty test character
 from testcharacter import TestCharacter
+from specialopscharacter import SpecialOpsCharacter
 
 # Uncomment this if you want the interactive character
 from interactivecharacter import InteractiveCharacter
@@ -27,8 +28,8 @@ g = Game.fromfile('map.txt')
 # ))
 
 # Uncomment this if you want the interactive character
-g.add_character(TestCharacter("me", "C", 0, 0,
-    nn_file="model.pickle",eps=0,explore=False))
+g.add_character(SpecialOpsCharacter("me", "C", 0, 0,
+   ))
 
 #from specialopscharacter import SpecialOpsCharacter
 #g.add_character(SpecialOpsCharacter("specops", "C", 0, 0))
