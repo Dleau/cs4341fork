@@ -193,33 +193,20 @@ class SpecialOpsCharacter(CharacterEntity):
         ''' @dillon
         max a assignment, approximate q-learnings
         '''
+        max_q = - inf
         possible_actions = self.__possible_actions(world) # list of dx, dy
-        max_q = -inf
-        max_action = None
-        c = None # max a clone
-        max_ev = None
+        clone = SensedWorld.from_world(world) # clone the current world
         for action in possible_actions:
-            clone = SensedWorld.from_world(world)
-            me = clone.me(self)
-            if me is None:
-                continue
-            dx, dy = action
-            me.move(dx, dy)
-            clone, ev = clone.next()
-            self.clone = clone
-            me = clone.me(self)
-            if me is None:
-                continue
-            q = self.__q(clone, action)
-            if q > max_q:
-                max_q = q
-                max_action = action
-                c = clone
-                max_ev = ev
-        self.max_a = max_q
-        self.clone = c
-        self.events = ev
-        return max_action
+             dx, dy = action # unpack
+             me = clone.me(self) # find me in cloned world
+             me.move(dx, dy) # make the move in cloned world
+             next_clone, ev = clone.next() # simulate the move and clone the next world
+             q = self.__q(next_clone, (0, 0)) # derive q of new world, don't move though
+             if q > max_q:
+                max_q = q # record q
+                self.max_a = action # record action
+                self.events = ev # record actions
+        return self.max_a # return action corresponding to best q
         
     def __s(self, world):
         ''' @dillon
