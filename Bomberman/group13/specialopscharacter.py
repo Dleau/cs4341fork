@@ -87,7 +87,7 @@ class SpecialOpsCharacter(CharacterEntity):
         goal_loc = world.exitcell
         char_pos = (world.me(self).x+action[0],world.me(self).y+action[1])
         #goal_dist = sqrt(pow((goal_loc[0] - action[0]),2) + pow((goal_loc[1] - action[1]),2))
-        path = self.__a_star(world,char_pos,goal_loc)
+        path = self.__bfs(world,char_pos,goal_loc)
         if not path[1]:
             return 1
         return 1/(len(path[0])+1)
@@ -150,9 +150,9 @@ class SpecialOpsCharacter(CharacterEntity):
             for neighbor in self.__list_neighbors(world,curr_node):
                 if neighbor not in came_from:
                     # g is distance from current node to the start node
-                    g = sqrt(pow((neighbor[0] - curr_node[0]),2) + pow((neighbor[1] - curr_node[1]),2));
+                    g = sqrt(pow((neighbor[0] - curr_node[0]),2) + pow((neighbor[1] - curr_node[1]),2))
                     # h is the distance from end node to current node
-                    h = sqrt(pow((to[0] - neighbor[0]),2) + pow((to[1] - neighbor[1]),2));
+                    h = sqrt(pow((to[0] - neighbor[0]),2) + pow((to[1] - neighbor[1]),2))
                     f = g + h
                     if f < best_val:
                         best_val = f
@@ -245,9 +245,9 @@ class SpecialOpsCharacter(CharacterEntity):
             if event.tpe == Event.CHARACTER_FOUND_EXIT:
                 r += 10
             elif event.tpe == Event.CHARACTER_KILLED_BY_MONSTER:
-                r -= 100
+                r -= 1000
             elif event.tpe == Event.BOMB_HIT_CHARACTER:
-                r -= 100
+                r -= 1000
             elif event.tpe == Event.BOMB_HIT_MONSTER:
                 r += 0.1
             elif event.tpe == Event.BOMB_HIT_WALL:
