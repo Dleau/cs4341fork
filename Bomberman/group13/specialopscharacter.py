@@ -9,6 +9,9 @@ from random import uniform, randrange
 from math import inf, sqrt
 from time import sleep
 from events import Event
+from queue import PriorityQueue
+
+
 
 class SpecialOpsCharacter(CharacterEntity):
 
@@ -138,35 +141,28 @@ class SpecialOpsCharacter(CharacterEntity):
         (path, True) if complete
         (path, False) if incomplete
         '''
-        queue = [fr]
-        came_from = {None: fr}
-        best_val = inf
-        best_next_node = None
-        while queue:
-            best_val = inf
-            curr_node = queue.pop(0)
-            if curr_node == to:
+        start = fr
+        goal = to
+        frontier = PriorityQueue()
+        frontier.put(start, 0)
+        came_from = {}
+        cost_so_far = {}
+        came_from[start] = None
+        cost_so_far[start] = 0    
+        while not frontier.empty():
+            current = frontier._get()
+            if current == goal:
                 break
-            for neighbor in self.__list_neighbors(world,curr_node):
-                if neighbor not in came_from:
-                    # g is distance from current node to the start node
-                    g = sqrt(pow((neighbor[0] - curr_node[0]),2) + pow((neighbor[1] - curr_node[1]),2));
-                    # h is the distance from end node to current node
-                    h = sqrt(pow((to[0] - neighbor[0]),2) + pow((to[1] - neighbor[1]),2));
-                    f = g + h
-                    if f < best_val:
-                        best_val = f
-                        best_next_node = neighbor
-                        came_from[curr_node] = neighbor
-            queue.append(best_next_node)
+            for next in self.__list_neighbors(world,current):
+                new_cost = cost_so_far[current] + 1
+                if next not in cost_so_far or new_cost < cost_so_far[next]:
+                    cost_so_far[next] = new_cost
+                    priority = new_cost + sqrt(pow((goal[0] - next[0]),2) + pow((goal[1] - next[1]),2))
+                    frontier.put(next, priority)
+                    came_from[next] = current
+
         path = []
         complete = False
-
-        came_from_reversed = {}
-        for k, v in came_from.items():
-            came_from_reversed[v] = k
-        came_from = came_from_reversed
-
         while to is not None:
             path = [to] + path
             if to in came_from and fr == came_from[to]:
@@ -175,6 +171,7 @@ class SpecialOpsCharacter(CharacterEntity):
                 break
             to = came_from[to]
         return (path, complete)
+        
         
     def __bomb_threats(self, world, action):
         ''' @dillon

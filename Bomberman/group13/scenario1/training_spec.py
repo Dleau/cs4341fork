@@ -17,7 +17,7 @@ from specialopscharacter import SpecialOpsCharacter
 
 from sensed_world import SensedWorld
 
-training = False
+training = True
 interactive = False
 eps = 0
 games = 0
