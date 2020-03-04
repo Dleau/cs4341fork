@@ -17,13 +17,13 @@ from specialopscharacter import SpecialOpsCharacter
 
 from sensed_world import SensedWorld
 
-training = True
+training = False
 interactive = False
 eps = 0.8
 games = 0
 sx = 0; sy = 0
 
-weights = None
+weights = {'__goal_dist_score': 16.57606166922695, '__bomb_threats': 7.020599253413071, '__distance_to_monster': 4.970054201897922, '__goal_blocked_score': -9.96490930795372}
 
 while eps > 0.1 or not training:
     # Create the game
@@ -43,9 +43,10 @@ while eps > 0.1 or not training:
     ))"""
 
     
-    g.add_monster(StupidMonster("2", 
+    g.add_monster(SelfPreservingMonster("2", 
                                 "S",      
-                                3, 13
+                                3, 13,
+                                1
                                 
     ))
             

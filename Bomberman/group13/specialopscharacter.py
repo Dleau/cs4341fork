@@ -85,8 +85,8 @@ class SpecialOpsCharacter(CharacterEntity):
         #goal_dist = sqrt(pow((goal_loc[0] - action[0]),2) + pow((goal_loc[1] - action[1]),2))
         path = self.__bfs(world,char_pos,goal_loc)
         if not path[1]:
-            return 0
-        return (1/len(path[0])+1)
+            return 1
+        return 1/(len(path[0])+1)
     
     def __goal_blocked_score(self, world, action):
         ''' @ray
@@ -137,7 +137,7 @@ class SpecialOpsCharacter(CharacterEntity):
         for dy in range(0, world.height()):
             if world.bomb_at(action[0], dy):
                 bomb_threats += 1
-        return 1-(1/(bomb_threats+1))
+        return (1/(bomb_threats+1))
         
     def __distance_to_monster(self, world, action):
         ''' @dillon
@@ -171,8 +171,7 @@ class SpecialOpsCharacter(CharacterEntity):
         '''
         r = self.__r()
         max_a = self.max_q
-        q = self.__q(world, action)
-        return (r + self.gamma * max_a) - q
+        return (r + self.gamma * max_a) - self.q
         
     def __w_i(self, world, action, function):
         ''' @dillon
@@ -203,7 +202,7 @@ class SpecialOpsCharacter(CharacterEntity):
                 r += 0.1
             elif event.tpe == Event.BOMB_HIT_WALL:
                 r += 0.05
-        r -= 0.1
+        r -= 0.001
         return r
         
     def __max_a(self, world):
