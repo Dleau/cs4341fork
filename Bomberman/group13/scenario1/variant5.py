@@ -11,7 +11,7 @@ from monsters.selfpreserving_monster import SelfPreservingMonster
 
 # TODO This is your code!
 sys.path.insert(1, '../groupNN')
-from testcharacter import TestCharacter
+from specialopscharacter import SpecialOpsCharacter
 
 # Create the game
 random.seed(123) # TODO Change this if you want different random choices
@@ -26,11 +26,13 @@ g.add_monster(SelfPreservingMonster("aggressive", # name
                                     2             # detection range
 ))
 
+w = {'__goal_dist_score': 19.09047063849142, '__bomb_threats': 5.480078816026969, '__distance_to_monster': 8.698416583053438, '__goal_blocked_score': -14.584547361089848}
+
 # TODO Add your character
-g.add_character(TestCharacter("me", # name
+g.add_character(SpecialOpsCharacter("me", # name
                               "C",  # avatar
-                              0, 0  # position
-,nn_file="model.pickle",eps=0))
+                              0, 0,  # position
+weights=w))
 
 # Run!
 g.go(1)

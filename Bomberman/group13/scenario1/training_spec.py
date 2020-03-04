@@ -23,9 +23,7 @@ eps = 0
 games = 0
 sx = 0; sy = 0
 
-#weights = {'__goal_dist_score': 0.8084695703881198, '__bomb_threats': 1.0, '__distance_to_monster': 0.8494102513595749, '__goal_blocked_score': 0.8259362740838581}
-
-weights = None
+weights ={'__goal_dist_score': 19.09047063849142, '__bomb_threats': 5.480078816026969, '__distance_to_monster': 8.698416583053438, '__goal_blocked_score': -14.584547361089848}
 
 while eps > 0.1 or not training:
     # Create the game
@@ -37,17 +35,16 @@ while eps > 0.1 or not training:
     #sx = random.randrange(0,8)
     #sy = random.randrange(0,19)
     
-    """
-    g.add_monster(SelfPreservingMonster("1", 
-                                "S",      
-                                3, 14,
-                                1      
-    ))"""
-
     
-    g.add_monster(StupidMonster("2", 
+    g.add_monster(StupidMonster("1", 
                                 "S",      
-                                3, 13
+                                3, 5   
+    ))
+    
+    g.add_monster(SelfPreservingMonster("2", 
+                                "S",      
+                                3, 13,
+                                2
                                 
     ))
             
@@ -69,4 +66,7 @@ while eps > 0.1 or not training:
     print("EPS:", eps)
     final_score = g.world.scores["me"]
     print("score", final_score, "games", games)
-    print(our_char.weights)
+    
+    weights = our_char.weights
+    print(weights)
+    

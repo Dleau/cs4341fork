@@ -8,6 +8,7 @@ from sensed_world import SensedWorld
 from random import uniform, randrange
 from math import inf, sqrt
 from time import sleep
+from events import Event
 
 class SpecialOpsCharacter(CharacterEntity):
 
@@ -27,7 +28,10 @@ class SpecialOpsCharacter(CharacterEntity):
             self.weights = {f.__name__: 1 for f in self.__functions()} # function name -> weight
         else:
             self.weights = weights
-        self.max_a = 0
+        self.max_a = None
+        self.max_q = 0
+        self.clone = None
+        self.events = []
 
     def do(self, world):
         # Commands
@@ -52,8 +56,8 @@ class SpecialOpsCharacter(CharacterEntity):
             self.move(dx, dy)
             '''
         #print(self.weights)
-        print('q', self.q)
-        print('epsilon', self.epsilon)
+        #print('q', self.q)
+        #print('epsilon', self.epsilon)
             
     def __next_action(self, world):
         ''' @dillon
@@ -85,8 +89,8 @@ class SpecialOpsCharacter(CharacterEntity):
         #goal_dist = sqrt(pow((goal_loc[0] - action[0]),2) + pow((goal_loc[1] - action[1]),2))
         path = self.__a_star(world,char_pos,goal_loc)
         if not path[1]:
-            return 0
-        return (1/len(path[0])+1)
+            return 1
+        return 1/(len(path[0])+1)
     
     def __goal_blocked_score(self, world, action):
         ''' @ray
@@ -183,7 +187,7 @@ class SpecialOpsCharacter(CharacterEntity):
         for dy in range(0, world.height()):
             if world.bomb_at(action[0], dy):
                 bomb_threats += 1
-        return 1-(1/(bomb_threats+1))
+        return (1/(bomb_threats+1))
         
     def __distance_to_monster(self, world, action):
         ''' @dillon
@@ -215,10 +219,9 @@ class SpecialOpsCharacter(CharacterEntity):
         ''' @dillon
         Delta assignment, approximate q-learning
         '''
-        r = self.__r(world, action)
-        max_a = self.max_a
-        q = self.__q(world, action)
-        return (r + self.gamma * max_a) - q
+        r = self.__r()
+        max_a = self.max_q
+        return (r + self.gamma * max_a) - self.q
         
     def __w_i(self, world, action, function):
         ''' @dillon
@@ -229,30 +232,52 @@ class SpecialOpsCharacter(CharacterEntity):
         f_i = function(world, action)
         self.weights[function.__name__] = w_i + self.alpha * delta * f_i # update weight val
         
-    def __r(self, world, action):
-        ''' @dillon
-        Reward assignment, approximate q-learning
-        This would likely need to be adjusted
+    def __r(self, events=None):
+        ''' @ray
+        calculates the reward for a given action
         '''
-        return -self.__goal_dist_score(world, action)
-        #return -1
+        if events is None:
+            ev = self.events
+        else:
+            ev = events
+        r = 0
+        for event in ev:
+            if event.tpe == Event.CHARACTER_FOUND_EXIT:
+                r += 10
+            elif event.tpe == Event.CHARACTER_KILLED_BY_MONSTER:
+                r -= 100
+            elif event.tpe == Event.BOMB_HIT_CHARACTER:
+                r -= 100
+            elif event.tpe == Event.BOMB_HIT_MONSTER:
+                r += 0.1
+            elif event.tpe == Event.BOMB_HIT_WALL:
+                r += 0.05
+        r -= 0.001
+        return r
         
     def __max_a(self, world):
         ''' @dillon
         max a assignment, approximate q-learnings
         '''
+        max_q = -100
         possible_actions = self.__possible_actions(world) # list of dx, dy
-        clone = SensedWorld.from_world(world)
-        max_q = -inf
-        max_action = None
         for action in possible_actions:
-            q = self.__q(clone, action)
-            print(action, q)
+            clone = SensedWorld.from_world(world) # clone the current world
+            dx, dy = action # unpack
+            me = clone.me(self) # find me in cloned world
+            me.move(dx, dy) # make the move in cloned world
+            next_clone, ev = clone.next() # simulate the move and clone the next world
+            if next_clone.me(self) is None:
+                # terminal state, q = r
+                q = self.__r(events=ev)
+            else:
+                q = self.__q(next_clone, (0, 0)) # derive q of new world, don't move though
             if q > max_q:
-                max_q = q
-                max_action = action
-        self.max_a = max_q
-        return max_action
+               max_q = q # record q
+               self.max_a = action # record action
+               self.events = ev # record actions
+        self.max_q = max_q
+        return self.max_a # return action corresponding to best q
         
     def __s(self, world):
         ''' @dillon
@@ -278,6 +303,8 @@ class SpecialOpsCharacter(CharacterEntity):
             for d_y in range(-1, 2):
                 x = character_x + d_x
                 y = character_y + d_y
+                if d_x == 0 and d_y == 0:
+                    continue
                 if (self.__within_bounds(world, x, y) 
                         and not world.wall_at(x,y)):
                     pairs.append((d_x, d_y))
@@ -290,10 +317,10 @@ class SpecialOpsCharacter(CharacterEntity):
         pairs = [] # keep legal pairs
         for d_x in range(-1, 2):
             for d_y in range(-1, 2):
-                if d_x == 0 and d_y == 0:
-                    continue
                 x = pos[0] + d_x
                 y = pos[1] + d_y
+                if d_x == 0 and d_y == 0:
+                    continue
                 if (self.__within_bounds(world, x, y) 
                         and not world.wall_at(x,y)):
                     pairs.append((x, y))
