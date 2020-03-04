@@ -23,8 +23,6 @@ eps = 0.8
 games = 0
 sx = 0; sy = 0
 
-#weights = {'__goal_dist_score': 0.8084695703881198, '__bomb_threats': 1.0, '__distance_to_monster': 0.8494102513595749, '__goal_blocked_score': 0.8259362740838581}
-
 weights = None
 
 while eps > 0.1 or not training:
@@ -69,4 +67,7 @@ while eps > 0.1 or not training:
     print("EPS:", eps)
     final_score = g.world.scores["me"]
     print("score", final_score, "games", games)
-    print(our_char.weights)
+    
+    weights = our_char.weights
+    print(weights)
+    

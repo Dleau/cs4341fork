@@ -28,6 +28,8 @@ class SpecialOpsCharacter(CharacterEntity):
         else:
             self.weights = weights
         self.max_a = 0
+        self.clone = None
+        self.events = None
 
     def do(self, world):
         # Commands
@@ -35,7 +37,7 @@ class SpecialOpsCharacter(CharacterEntity):
         Does the next move
         '''
         #sleep(0.5) # helpful for debugging
-        input() # alternative, also helpful
+        # input() # alternative, also helpful
         # gets the next best action using max a
         dx, dy = self.__next_action(world)
         # updates the function weights using max a and delta
@@ -184,24 +186,39 @@ class SpecialOpsCharacter(CharacterEntity):
         Reward assignment, approximate q-learning
         This would likely need to be adjusted
         '''
-        return -self.__goal_dist_score(world, action)
-        #return -1
+        #return -self.__goal_dist_score(world, action)
+        return -1
         
     def __max_a(self, world):
         ''' @dillon
         max a assignment, approximate q-learnings
         '''
         possible_actions = self.__possible_actions(world) # list of dx, dy
-        clone = SensedWorld.from_world(world)
         max_q = -inf
         max_action = None
+        c = None # max a clone
+        max_ev = None
         for action in possible_actions:
+            clone = SensedWorld.from_world(world)
+            me = clone.me(self)
+            if me is None:
+                continue
+            dx, dy = action
+            me.move(dx, dy)
+            clone, ev = clone.next()
+            self.clone = clone
+            me = clone.me(self)
+            if me is None:
+                continue
             q = self.__q(clone, action)
-            print(action, q)
             if q > max_q:
                 max_q = q
                 max_action = action
+                c = clone
+                max_ev = ev
         self.max_a = max_q
+        self.clone = c
+        self.events = ev
         return max_action
         
     def __s(self, world):

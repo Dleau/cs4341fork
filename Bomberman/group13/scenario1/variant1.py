@@ -27,11 +27,11 @@ g = Game.fromfile('map.txt')
 # ))
 
 # Uncomment this if you want the interactive character
-g.add_character(TestCharacter("me", "C", 0, 0,
-    nn_file="model.pickle",eps=0,explore=False))
+# g.add_character(TestCharacter("me", "C", 0, 0,
+#     nn_file="model.pickle",eps=0,explore=False))
 
-#from specialopscharacter import SpecialOpsCharacter
-#g.add_character(SpecialOpsCharacter("specops", "C", 0, 0))
+from specialopscharacter import SpecialOpsCharacter
+g.add_character(SpecialOpsCharacter("specops", "C", 0, 0))
 
 # Run!
 
