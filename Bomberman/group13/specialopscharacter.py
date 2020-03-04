@@ -137,7 +137,7 @@ class SpecialOpsCharacter(CharacterEntity):
         for dy in range(0, world.height()):
             if world.bomb_at(action[0], dy):
                 bomb_threats += 1
-        return (1/(bomb_threats+1))
+        return 1-(1/(bomb_threats+1))
         
     def __distance_to_monster(self, world, action):
         ''' @dillon
@@ -253,8 +253,9 @@ class SpecialOpsCharacter(CharacterEntity):
             for d_y in range(-1, 2):
                 x = character_x + d_x
                 y = character_y + d_y
+                """
                 if d_x == 0 and d_y == 0:
-                    continue
+                    continue"""
                 if (self.__within_bounds(world, x, y) 
                         and not world.wall_at(x,y)):
                     pairs.append((d_x, d_y))
