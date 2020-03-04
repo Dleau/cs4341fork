@@ -28,7 +28,8 @@ class SpecialOpsCharacter(CharacterEntity):
             self.weights = {f.__name__: 1 for f in self.__functions()} # function name -> weight
         else:
             self.weights = weights
-        self.max_a = 0
+        self.max_a = None
+        self.max_q = 0
         self.clone = None
         self.events = []
 
@@ -169,7 +170,7 @@ class SpecialOpsCharacter(CharacterEntity):
         Delta assignment, approximate q-learning
         '''
         r = self.__r()
-        max_a = self.max_a
+        max_a = self.max_q
         q = self.__q(world, action)
         return (r + self.gamma * max_a) - q
         
@@ -182,11 +183,14 @@ class SpecialOpsCharacter(CharacterEntity):
         f_i = function(world, action)
         self.weights[function.__name__] = w_i + self.alpha * delta * f_i # update weight val
         
-    def __r(self):
+    def __r(self, events=None):
         ''' @ray
         calculates the reward for a given action
         '''
-        ev = self.events
+        if events is None:
+            ev = self.events
+        else:
+            ev = events
         r = 0
         for event in ev:
             if event.tpe == Event.CHARACTER_FOUND_EXIT:
@@ -199,44 +203,32 @@ class SpecialOpsCharacter(CharacterEntity):
                 r += 0.1
             elif event.tpe == Event.BOMB_HIT_WALL:
                 r += 0.05
-        r -= 0.001
+        r -= 0.1
         return r
         
     def __max_a(self, world):
         ''' @dillon
         max a assignment, approximate q-learnings
         '''
-        possible_actions = self.__possible_actions(world) # list of dx, dy
         max_q = -100
-        max_action = None
-        c = None # max a clone
-        max_ev = []
+        possible_actions = self.__possible_actions(world) # list of dx, dy
         for action in possible_actions:
-            clone = SensedWorld.from_world(world)
-            me = clone.me(self)
-            if me is None:
-                if max_action is None:
-                    max_action = action
-                continue
-            dx, dy = action
-            me.move(dx, dy)
-            clone, ev = clone.next()
-            self.clone = clone
-            me = clone.me(self)
-            if me is None:
-                if max_action is None:
-                    max_action = action
-                continue
-            q = self.__q(clone, action)
+            clone = SensedWorld.from_world(world) # clone the current world
+            dx, dy = action # unpack
+            me = clone.me(self) # find me in cloned world
+            me.move(dx, dy) # make the move in cloned world
+            next_clone, ev = clone.next() # simulate the move and clone the next world
+            if next_clone.me(self) is None:
+                # terminal state, q = r
+                q = self.__r(events=ev)
+            else:
+                q = self.__q(next_clone, (0, 0)) # derive q of new world, don't move though
             if q > max_q:
-                max_q = q
-                max_action = action
-                c = clone
-                max_ev = ev
-        self.max_a = max_q
-        self.clone = c
-        self.events = max_ev
-        return max_action
+               max_q = q # record q
+               self.max_a = action # record action
+               self.events = ev # record actions
+        self.max_q = max_q
+        return self.max_a # return action corresponding to best q
         
     def __s(self, world):
         ''' @dillon
@@ -262,6 +254,8 @@ class SpecialOpsCharacter(CharacterEntity):
             for d_y in range(-1, 2):
                 x = character_x + d_x
                 y = character_y + d_y
+                if d_x == 0 and d_y == 0:
+                    continue
                 if (self.__within_bounds(world, x, y) 
                         and not world.wall_at(x,y)):
                     pairs.append((d_x, d_y))
@@ -274,10 +268,10 @@ class SpecialOpsCharacter(CharacterEntity):
         pairs = [] # keep legal pairs
         for d_x in range(-1, 2):
             for d_y in range(-1, 2):
-                if d_x == 0 and d_y == 0:
-                    continue
                 x = pos[0] + d_x
                 y = pos[1] + d_y
+                if d_x == 0 and d_y == 0:
+                    continue
                 if (self.__within_bounds(world, x, y) 
                         and not world.wall_at(x,y)):
                     pairs.append((x, y))
