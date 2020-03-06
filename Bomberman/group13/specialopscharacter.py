@@ -20,7 +20,7 @@ class SpecialOpsCharacter(CharacterEntity):
         
     # order of determination: max a, delta, weights, q
 
-    def __init__(self, name, avatar, x, y,eps=0, weights=None):
+    def __init__(self, name, avatar, x, y, eps=0, weights=None):
         # @dillon
         super().__init__(name, avatar, x, y)
         self.alpha = 0.01 # alpha value for use in q-learning formula
@@ -53,14 +53,17 @@ class SpecialOpsCharacter(CharacterEntity):
         self.q = self.__q(world, (dx, dy)) 
         
         # updates curiosity scores
+        '''
         x, y = self.__s(world)
         state_tuple = (dx, dy, x, y) 
         if state_tuple not in self.curiosity_scores:
             self.curiosity_scores[state_tuple] = 0
         self.curiosity_scores[state_tuple] += 1
+        '''
 
         if (dx, dy) == (0, 0):
             self.place_bomb()
+            # self.move(dx, dy) # for debugging only
         else:
             self.move(dx, dy)
 
@@ -86,9 +89,40 @@ class SpecialOpsCharacter(CharacterEntity):
         List f1 through fn
         Every function must take ONLY world and action as args
         '''
+        '''
         return [self.__goal_dist_score, self.__bomb_threats, 
             self.__distance_to_monster, self.__wall_blow_up_score,
             self.__chaos_score]
+        '''
+        return [
+            self.__goal_dist_score,
+            self.__distance_to_monster,
+            self.__goal_to_monster_ratio,
+            self.__goal_distance_as_crow,
+            self.__bomb_threats
+        ]
+        
+    def __goal_distance_as_crow(self, world, action):
+        ''' @dillon, @ray
+        Distance to goal as the crow flies, crows can go over walls
+        Uses ignore_walls=True in BFS method
+        Helpful for bombs, identifying when paths could be more direct
+        '''
+        goal_loc = world.exitcell
+        char_pos = (world.me(self).x+action[0],world.me(self).y+action[1])
+        path = self.__bfs(world,char_pos,goal_loc, ignore_walls=True)
+        if not path[1]: return 1
+        else: return 1/(len(path[0])+1)
+        
+    def __goal_to_monster_ratio(self, world, action):
+        ''' @dillon
+        (distance to goal) : (distance to closest monster)
+        Incentivize cooking the monster once closer to the goal than him
+        '''
+        goal = self.__goal_dist_score(world, action)
+        monster = self.__distance_to_monster(world, action)
+        ratio = goal / monster
+        return 1 / (1 + ratio) # so that closer to 1 is better (I think)
     
     def __could_die(self, world, action):
         ''' @ray
@@ -132,13 +166,15 @@ class SpecialOpsCharacter(CharacterEntity):
             return 1
         return 0
     
-    def __bfs(self, world, fr, to):
+    def __bfs(self, world, fr, to, ignore_walls=False):
         ''' @ray
         Returns the path from 'from' to 'to'
         if the path doesn't exist then it returns
         the incomplete path
         (path, True) if complete
         (path, False) if incomplete
+        
+        use BFS and go through walls w/ ignore_walls=True
         '''
         queue = [fr]
         came_from = {fr: None}
@@ -146,7 +182,10 @@ class SpecialOpsCharacter(CharacterEntity):
             s = queue.pop(0)
             if s == to:
                 break
-            for neighbor in self.__list_neighbors(world,s):
+            neighbors = None
+            if ignore_walls: neighbors = self.__surrounding_pairs(world) # get path w/ walls
+            else: neighbors = self.__list_neighbors(world, s) # get path w/out walls
+            for neighbor in neighbors:
                 if neighbor not in came_from:
                     came_from[neighbor] = s
                     queue.append(neighbor)
@@ -199,7 +238,6 @@ class SpecialOpsCharacter(CharacterEntity):
             to = came_from[to]
         return (path, complete)
         
-        
     def __bomb_threats(self, world, action):
         ''' @dillon
         Threatening bombs, 1 is 0 bombs, 0 is a bomb
@@ -248,12 +286,14 @@ class SpecialOpsCharacter(CharacterEntity):
             weight = self.weights[function.__name__] # get weight val
             sum += weight * function(world, action) # w_i * f_i, part of summation
         # add the curiosity score
+        '''
         x, y = self.__s(world)
         state_tuple = (action[0], action[1], x, y)
         times_visited = 0
         if state_tuple in self.curiosity_scores:
             times_visited = self.curiosity_scores[state_tuple]
         sum += 1/(times_visited+1)
+        '''
         return sum
         
     def __delta(self, world, action):
@@ -365,3 +405,16 @@ class SpecialOpsCharacter(CharacterEntity):
                         and not world.wall_at(x,y)):
                     pairs.append((x, y))
         return pairs
+        
+    def __surrounding_pairs(self, world):
+        ''' @Dillon
+        List pairs surrounding the character, including those w/ walls
+        '''
+        pairs = [] # keep list (dx, dy)
+        x, y = self.__s(world) # derive current position
+        for dx in range(-1, 2): # -1 to 1
+            for dy in range(-1, 2): # likewise
+                if self.__within_bounds(world, x + dx, y + dy): # check boundries
+                    pairs.append((dx, dy)) # append to list
+        return pairs # return list of pairs (dx, dy)
+        

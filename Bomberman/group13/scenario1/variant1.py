@@ -32,7 +32,9 @@ g = Game.fromfile('map.txt')
 #     nn_file="model.pickle",eps=0,explore=False))
 
 from specialopscharacter import SpecialOpsCharacter
-g.add_character(SpecialOpsCharacter("specops", "C", 0, 0, weights={'__goal_dist_score': 19.09047063849142, '__bomb_threats': 5.480078816026969, '__distance_to_monster': 8.698416583053438, '__goal_blocked_score': -14.584547361089848}))
+# weights = {'__goal_dist_score': 53.012209846051945, '__distance_to_monster': 14.332240246509578, '__goal_to_monster_ratio': -16.678503789000597}
+weights = {'__goal_dist_score': 19.63618900838964, '__distance_to_monster': 10.294196640723415, '__goal_to_monster_ratio': -14.866932303600555, '__goal_distance_as_crow': -6.017510630677442, '__bomb_threats': -1.8075836853346297}
+g.add_character(SpecialOpsCharacter("specops", "C", 0, 0, weights=weights))
 
 # Run!
 
