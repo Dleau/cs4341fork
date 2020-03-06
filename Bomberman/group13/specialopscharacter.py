@@ -35,6 +35,7 @@ class SpecialOpsCharacter(CharacterEntity):
         self.max_q = 0
         self.clone = None
         self.events = []
+        self.curiosity_scores = {}
 
     def do(self, world):
         # Commands
@@ -50,14 +51,19 @@ class SpecialOpsCharacter(CharacterEntity):
             self.__w_i(world, (dx, dy), function)
         # determines a q value for this state
         self.q = self.__q(world, (dx, dy)) 
-        self.move(dx, dy)
+        
+        # updates curiosity scores
+        x, y = self.__s(world)
+        state_tuple = (dx, dy, x, y) 
+        if state_tuple not in self.curiosity_scores:
+            self.curiosity_scores[state_tuple] = 0
+        self.curiosity_scores[state_tuple] += 1
 
-        '''
         if (dx, dy) == (0, 0):
             self.place_bomb()
         else:
             self.move(dx, dy)
-            '''
+
         #print(self.weights)
         #print('q', self.q)
         #print('epsilon', self.epsilon)
@@ -81,7 +87,19 @@ class SpecialOpsCharacter(CharacterEntity):
         Every function must take ONLY world and action as args
         '''
         return [self.__goal_dist_score, self.__bomb_threats, 
-            self.__distance_to_monster, self.__goal_blocked_score]
+            self.__distance_to_monster, self.__wall_blow_up_score,
+            self.__chaos_score]
+    
+    def __could_die(self, world, action):
+        ''' @ray
+        Returns 0 if this move could cause the agent to die
+        returns 1 otherwise
+        '''
+        me = world.me(self)
+        (x,y) = (me.x+action[0],me.y+action[1])
+        if world.bomb_at(x,y) is not None:
+            return 0
+        return 1
         
     def __goal_dist_score(self, world, action):
         ''' @ray
@@ -95,14 +113,24 @@ class SpecialOpsCharacter(CharacterEntity):
             return 1
         return 1/(len(path[0])+1)
     
-    def __goal_blocked_score(self, world, action):
+    def __wall_blow_up_score(self, world, action):
         ''' @ray
-        1 if unblocked, 0 if blocked
+        1 if there is a bomb by a wall, 0 otherwise
         '''
-        goal_loc = world.exitcell
-        char_pos = (world.me(self).x+action[0],world.me(self).y+action[1])
-        path = self.__bfs(world,char_pos,goal_loc)
-        return 1 if path[1] else 0
+        for bomb in world.bombs.values():
+            pos = (bomb.x, bomb.y)
+            for n_x, n_y in self.__list_neighbors(world,pos):
+                if world.wall_at(n_x,n_y):
+                    return 1
+        return 0
+    
+    def __chaos_score(self, world, action):
+        ''' @ray
+        returns 0 if theres no bomb on screen, 1 if there is
+        '''
+        if len(world.bombs.keys()) > 0:
+            return 1
+        return 0
     
     def __bfs(self, world, fr, to):
         ''' @ray
@@ -174,28 +202,38 @@ class SpecialOpsCharacter(CharacterEntity):
         
     def __bomb_threats(self, world, action):
         ''' @dillon
-        Number of threatening bombs
+        Threatening bombs, 1 is 0 bombs, 0 is a bomb
         '''
+        pos = self.__s(world)
+        (x,y) = (pos[0]+action[0],pos[1]+action[1])
         bomb_threats = 0
-        for dx in range(0, world.width()):
-            if world.bomb_at(dx, action[1]):
+        for dx in range(-3, 4):
+            if not self.__within_bounds(world,x+dx,y):
+                continue
+            if world.bomb_at(x+dx, action[1]):
                 bomb_threats += 1
-        for dy in range(0, world.height()):
-            if world.bomb_at(action[0], dy):
+        for dy in range(-3, 4):
+            if dy == 0:
+                continue
+            if not self.__within_bounds(world,x,y+dy):
+                continue
+            if world.bomb_at(y+dy, dy):
                 bomb_threats += 1
-        return 1-(1/(bomb_threats+1))
+        return 1 if bomb_threats == 0 else 0
         
     def __distance_to_monster(self, world, action):
-        ''' @dillon
-        Euclidian distance to the closest monster
+        ''' @ray
+        Path distance to nearest monster
         '''
         distances = [] # distances to monsters
         monsters = [l[0] for l in list(world.monsters.values())] # list of monsters
         for monster in monsters:
             x, y = self.__s(world)
-            d_x, d_y = x - monster.x, y - monster.y
-            distance = sqrt(pow(d_x, 2) + pow(d_y, 2))
-            distances.append(distance)
+            x += action[0]
+            y += action[1]
+            path, unblocked = self.__bfs(world, (x,y), (monster.x,monster.y))
+            if unblocked:
+                distances.append(len(path))
         return 1 if len(distances) == 0 else 1-(1/(min(distances) + 1))
         #return 0 if not len(distances) else min(distances)
             
@@ -209,13 +247,20 @@ class SpecialOpsCharacter(CharacterEntity):
         for function in self.__functions(): # f1 through fn
             weight = self.weights[function.__name__] # get weight val
             sum += weight * function(world, action) # w_i * f_i, part of summation
+        # add the curiosity score
+        x, y = self.__s(world)
+        state_tuple = (action[0], action[1], x, y)
+        times_visited = 0
+        if state_tuple in self.curiosity_scores:
+            times_visited = self.curiosity_scores[state_tuple]
+        sum += 1/(times_visited+1)
         return sum
         
     def __delta(self, world, action):
         ''' @dillon
         Delta assignment, approximate q-learning
         '''
-        r = self.__r()
+        r = self.__r(self.events)
         max_a = self.max_q
         return (r + self.gamma * max_a) - self.q
         
@@ -228,26 +273,22 @@ class SpecialOpsCharacter(CharacterEntity):
         f_i = function(world, action)
         self.weights[function.__name__] = w_i + self.alpha * delta * f_i # update weight val
         
-    def __r(self, events=None):
+    def __r(self, events):
         ''' @ray
         calculates the reward for a given action
         '''
-        if events is None:
-            ev = self.events
-        else:
-            ev = events
         r = 0
-        for event in ev:
+        for event in events:
             if event.tpe == Event.CHARACTER_FOUND_EXIT:
-                r += 10
+                r += 100
             elif event.tpe == Event.CHARACTER_KILLED_BY_MONSTER:
-                r -= 1000
+                r -= 100
             elif event.tpe == Event.BOMB_HIT_CHARACTER:
-                r -= 1000
+                r -= 100
             elif event.tpe == Event.BOMB_HIT_MONSTER:
-                r += 0.1
+                r += 10
             elif event.tpe == Event.BOMB_HIT_WALL:
-                r += 0.05
+                r += 0.5
         r -= 0.001
         return r
         
@@ -255,24 +296,26 @@ class SpecialOpsCharacter(CharacterEntity):
         ''' @dillon
         max a assignment, approximate q-learnings
         '''
-        max_q = -100
+        self.max_q = -inf
         possible_actions = self.__possible_actions(world) # list of dx, dy
         for action in possible_actions:
             clone = SensedWorld.from_world(world) # clone the current world
             dx, dy = action # unpack
             me = clone.me(self) # find me in cloned world
-            me.move(dx, dy) # make the move in cloned world
+            if dx == 0 and dy == 0:
+                me.place_bomb()
+            else:
+                me.move(dx, dy) # make the move in cloned world
             next_clone, ev = clone.next() # simulate the move and clone the next world
             if next_clone.me(self) is None:
                 # terminal state, q = r
-                q = self.__r(events=ev)
+                q = self.__r(ev)
             else:
                 q = self.__q(next_clone, (0, 0)) # derive q of new world, don't move though
-            if q > max_q:
-               max_q = q # record q
+            if q > self.max_q:
+               self.max_q = q # record q
                self.max_a = action # record action
                self.events = ev # record actions
-        self.max_q = max_q
         return self.max_a # return action corresponding to best q
         
     def __s(self, world):
