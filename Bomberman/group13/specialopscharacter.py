@@ -100,6 +100,7 @@ class SpecialOpsCharacter(CharacterEntity):
             self.__goal_to_monster_ratio,
             self.__goal_distance_as_crow,
             self.__bomb_threats,
+            self.__goal_dist_obstructed_score
         ]
         
     def __goal_distance_as_crow(self, world, action):
@@ -177,6 +178,18 @@ class SpecialOpsCharacter(CharacterEntity):
         if not path[1]:
             return 1
         return 1/(len(path[0])+1)
+
+    def __goal_dist_obstructed_score(self, world, action):
+        ''' @ray
+        BFS distance to the goal, 0 if blocked
+        '''
+        goal_loc = world.exitcell
+        char_pos = (world.me(self).x+action[0],world.me(self).y+action[1])
+        #goal_dist = sqrt(pow((goal_loc[0] - action[0]),2) + pow((goal_loc[1] - action[1]),2))
+        path = self.__bfs_obstructed(world,char_pos,goal_loc, False)
+        if not path[1]:
+            return 1
+        return 1/(len(path[0])+1)
     
     def __wall_blow_up_score(self, world, action):
         ''' @ray
@@ -223,6 +236,42 @@ class SpecialOpsCharacter(CharacterEntity):
                     queue.append(neighbor)
         path = []
         complete = False
+        while to is not None:
+            path = [to] + path
+            if to in came_from and fr == came_from[to]:
+                complete = True
+            if to not in came_from:
+                break
+            to = came_from[to]
+        return (path, complete)
+
+    def __bfs_obstructed(self, world, fr, to, ignore_walls):
+        ''' @joe
+        Returns the path from 'from' to 'to'
+        if the path doesn't exist then it returns
+        the incomplete path
+        (path, True) if complete
+        (path, False) if incomplete
+        
+        use BFS and go through walls w/ ignore_walls=True
+        '''
+        last_visited = None
+        queue = [fr]
+        came_from = {fr: None}
+        while queue:
+            s = queue.pop(0)
+            if s == to:
+                break
+            neighbors = None
+            if ignore_walls: neighbors = self.__surrounding_pairs_s(world, s) # get path w/o walls
+            else: neighbors = self.__list_neighbors(world, s) # get path w walls
+            for neighbor in neighbors:
+                if neighbor not in came_from:
+                    came_from[neighbor] = s
+                    queue.append(neighbor)
+        path = []
+        complete = False
+        to = sorted(came_from.keys())[-1]
         while to is not None:
             path = [to] + path
             if to in came_from and fr == came_from[to]:
@@ -351,6 +400,11 @@ class SpecialOpsCharacter(CharacterEntity):
         ''' @ray
         calculates the reward for a given action
         '''
+        me = self.__s(world)
+        goal = world.exitcell
+        rw = sqrt(pow((goal[0] - me[0]),2) + pow((goal[1] - me[1]),2))
+
+
         r = 0
         for event in events:
             if event.tpe == Event.CHARACTER_FOUND_EXIT:
@@ -358,7 +412,7 @@ class SpecialOpsCharacter(CharacterEntity):
             elif event.tpe == Event.CHARACTER_KILLED_BY_MONSTER:
                 r -= 100 
             elif event.tpe == Event.BOMB_HIT_CHARACTER:
-                r -= 100 
+                r -= 100
             elif event.tpe == Event.BOMB_HIT_MONSTER:
                 r += 10
             elif event.tpe == Event.BOMB_HIT_WALL:

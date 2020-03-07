@@ -19,7 +19,7 @@ from sensed_world import SensedWorld
 
 training = True
 interactive = False
-eps = 1
+eps = .5
 games = 0
 sx = 0; sy = 0
 

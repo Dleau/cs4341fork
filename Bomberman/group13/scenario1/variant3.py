@@ -24,7 +24,7 @@ g.add_monster(SelfPreservingMonster("selfpreserving", # name
 
 # TODO Add your character
 # weights = {'__goal_dist_score': 53.012209846051945, '__distance_to_monster': 14.332240246509578, '__goal_to_monster_ratio': -16.678503789000597}
-weights = {'__goal_dist_score': 101.4914450610426, '__distance_to_monster': 41.88293032952136, '__goal_to_monster_ratio': -95.55063381131076, '__goal_distance_as_crow': -43.95348572831751, '__bomb_threats': 84.99263820458155}
+weights =  {'__goal_dist_score': 10.0157139736459162, '__distance_to_monster': 19.356608344043547, '__goal_to_monster_ratio': -10.899725942090054, '__goal_distance_as_crow': 1.7205125700525967, '__bomb_threats': 95.26731497713193, '__goal_dist_obstructed_score': 1.0157139736459162}
 g.add_character(SpecialOpsCharacter("me", "C", 0, 0, weights=weights))
 
 # Run!

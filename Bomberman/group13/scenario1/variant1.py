@@ -33,7 +33,7 @@ g = Game.fromfile('map.txt')
 
 from specialopscharacter import SpecialOpsCharacter
 # weights = {'__goal_dist_score': 53.012209846051945, '__distance_to_monster': 14.332240246509578, '__goal_to_monster_ratio': -16.678503789000597}
-weights = {'__goal_dist_score': 19.63618900838964, '__distance_to_monster': 10.294196640723415, '__goal_to_monster_ratio': -14.866932303600555, '__goal_distance_as_crow': -6.017510630677442, '__bomb_threats': -1.8075836853346297}
+weights = {'__goal_dist_score': 10.0157139736459162, '__distance_to_monster': 19.356608344043547, '__goal_to_monster_ratio': -10.899725942090054, '__goal_distance_as_crow': 1.7205125700525967, '__bomb_threats': 95.26731497713193, '__goal_dist_obstructed_score': 1.0157139736459162}
 g.add_character(SpecialOpsCharacter("specops", "C", 0, 0 , weights=weights))
 
 # Run!

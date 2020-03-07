@@ -65,7 +65,7 @@ while eps > 0.1 or not training:
     
     # decrease epsilon
     if eps > 0:
-        eps *= 0.999
+        eps *= 0.99
     elif eps < 0:
         eps = 0
 
