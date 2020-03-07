@@ -25,7 +25,8 @@ g.add_monster(SelfPreservingMonster("aggressive", # name
 g.add_character(SpecialOpsCharacter("me", # name
                               "C",  # avatar
                               0, 0  # position
-,weights={'__goal_dist_score': 19.09047063849142, '__bomb_threats': 5.480078816026969, '__distance_to_monster': 8.698416583053438, '__goal_blocked_score': -14.584547361089848}))
+,weights =  {'__goal_dist_score': 19.63618900838964, '__distance_to_monster': 10.294196640723415, '__goal_to_monster_ratio': -14.866932303600555, '__goal_distance_as_crow': -6.017510630677442, '__bomb_threats': -1.8075836853346297}
+))
 
 # Run!
 g.go(1)

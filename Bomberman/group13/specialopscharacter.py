@@ -67,7 +67,7 @@ class SpecialOpsCharacter(CharacterEntity):
         else:
             self.move(dx, dy)
 
-        #print(self.weights)
+        print(self.weights)
         #print('q', self.q)
         #print('epsilon', self.epsilon)
             
@@ -99,7 +99,7 @@ class SpecialOpsCharacter(CharacterEntity):
             self.__distance_to_monster,
             self.__goal_to_monster_ratio,
             self.__goal_distance_as_crow,
-            self.__bomb_threats
+            self.__bomb_threats,
         ]
         
     def __goal_distance_as_crow(self, world, action):
@@ -110,9 +110,38 @@ class SpecialOpsCharacter(CharacterEntity):
         '''
         goal_loc = world.exitcell
         char_pos = (world.me(self).x+action[0],world.me(self).y+action[1])
-        path = self.__bfs(world,char_pos,goal_loc, ignore_walls=True)
+        path = self.__bfs(world,char_pos,goal_loc,True)
         if not path[1]: return 1
-        else: return 1/(len(path[0])+1)
+        return 1/(len(path[0])+1)
+
+
+    def __euiclidean_distance(self, world, action):
+        ''' @joe
+        Distance to goal as the crow flies, but euclidean
+        '''
+        goal_loc = world.exitcell
+        char_pos = (world.me(self).x+action[0],world.me(self).y+action[1])
+        dist = sqrt(pow((goal_loc[1] - char_pos[1]),2))
+        #dist = sqrt(pow((goal_loc[0] - char_pos[0]),2) + pow((goal_loc[1] - char_pos[1]),2))
+        return 1/(dist+1)
+
+    def __tunnel(self, world, action):
+        ''' @joe
+        tunnel
+        '''
+        char_pos = (world.me(self).x+action[0],world.me(self).y+action[1])
+        if char_pos[0] + 1 < world.width() and char_pos[0] - 1 > 0:
+            if(world.wall_at(char_pos[0] + 1, char_pos[1])) and world.wall_at(char_pos[0] - 1, char_pos[1]):
+                return 1
+        if char_pos[0] + 1 < world.width() and char_pos[0] - 1 <= 0:
+            if(world.wall_at(char_pos[0] + 1, char_pos[1])):
+                return 1
+        if char_pos[0] + 1 >= world.width() and char_pos[0] - 1 > 0:
+            if(world.wall_at(char_pos[0] - 1, char_pos[1])):
+                return 1
+        return 0
+
+       
         
     def __goal_to_monster_ratio(self, world, action):
         ''' @dillon
@@ -132,8 +161,10 @@ class SpecialOpsCharacter(CharacterEntity):
         me = world.me(self)
         (x,y) = (me.x+action[0],me.y+action[1])
         if world.bomb_at(x,y) is not None:
-            return 0
-        return 1
+            return 1
+        if world.explosion_at(x,y) is not None:
+            return 1
+        return 0
         
     def __goal_dist_score(self, world, action):
         ''' @ray
@@ -142,7 +173,7 @@ class SpecialOpsCharacter(CharacterEntity):
         goal_loc = world.exitcell
         char_pos = (world.me(self).x+action[0],world.me(self).y+action[1])
         #goal_dist = sqrt(pow((goal_loc[0] - action[0]),2) + pow((goal_loc[1] - action[1]),2))
-        path = self.__bfs(world,char_pos,goal_loc)
+        path = self.__bfs(world,char_pos,goal_loc, False)
         if not path[1]:
             return 1
         return 1/(len(path[0])+1)
@@ -166,7 +197,7 @@ class SpecialOpsCharacter(CharacterEntity):
             return 1
         return 0
     
-    def __bfs(self, world, fr, to, ignore_walls=False):
+    def __bfs(self, world, fr, to, ignore_walls):
         ''' @ray
         Returns the path from 'from' to 'to'
         if the path doesn't exist then it returns
@@ -176,6 +207,7 @@ class SpecialOpsCharacter(CharacterEntity):
         
         use BFS and go through walls w/ ignore_walls=True
         '''
+        last_visited = None
         queue = [fr]
         came_from = {fr: None}
         while queue:
@@ -183,8 +215,8 @@ class SpecialOpsCharacter(CharacterEntity):
             if s == to:
                 break
             neighbors = None
-            if ignore_walls: neighbors = self.__surrounding_pairs(world) # get path w/ walls
-            else: neighbors = self.__list_neighbors(world, s) # get path w/out walls
+            if ignore_walls: neighbors = self.__surrounding_pairs_s(world, s) # get path w/o walls
+            else: neighbors = self.__list_neighbors(world, s) # get path w walls
             for neighbor in neighbors:
                 if neighbor not in came_from:
                     came_from[neighbor] = s
@@ -200,7 +232,7 @@ class SpecialOpsCharacter(CharacterEntity):
             to = came_from[to]
         return (path, complete)
 
-    def __a_star(self, world, fr, to):
+    def __a_star(self, world, fr, to, ignore_walls):
         ''' @Joe
         Returns the path from 'from' to 'to'
         if the path doesn't exist then it returns
@@ -220,7 +252,9 @@ class SpecialOpsCharacter(CharacterEntity):
             current = frontier._get()
             if current == goal:
                 break
-            for next in self.__list_neighbors(world,current):
+            if ignore_walls: neighbors = self.__surrounding_pairs_s(world, current) # get path w/o walls
+            else: neighbors = self.__list_neighbors(world, current) # get path w walls
+            for next in neighbors:
                 new_cost = cost_so_far[current] + 1
                 if next not in cost_so_far or new_cost < cost_so_far[next]:
                     cost_so_far[next] = new_cost
@@ -248,14 +282,14 @@ class SpecialOpsCharacter(CharacterEntity):
         for dx in range(-3, 4):
             if not self.__within_bounds(world,x+dx,y):
                 continue
-            if world.bomb_at(x+dx, action[1]):
+            if world.bomb_at(x+dx, y) or world.explosion_at(x+dx,y):
                 bomb_threats += 1
         for dy in range(-3, 4):
             if dy == 0:
                 continue
             if not self.__within_bounds(world,x,y+dy):
                 continue
-            if world.bomb_at(y+dy, dy):
+            if world.bomb_at(x, y+dy) or world.explosion_at(x, y+dy):
                 bomb_threats += 1
         return 1 if bomb_threats == 0 else 0
         
@@ -269,7 +303,7 @@ class SpecialOpsCharacter(CharacterEntity):
             x, y = self.__s(world)
             x += action[0]
             y += action[1]
-            path, unblocked = self.__bfs(world, (x,y), (monster.x,monster.y))
+            path, unblocked = self.__bfs(world, (x,y), (monster.x,monster.y), False)
             if unblocked:
                 distances.append(len(path))
         return 1 if len(distances) == 0 else 1-(1/(min(distances) + 1))
@@ -300,7 +334,7 @@ class SpecialOpsCharacter(CharacterEntity):
         ''' @dillon
         Delta assignment, approximate q-learning
         '''
-        r = self.__r(self.events)
+        r = self.__r(self.events, world)
         max_a = self.max_q
         return (r + self.gamma * max_a) - self.q
         
@@ -313,7 +347,7 @@ class SpecialOpsCharacter(CharacterEntity):
         f_i = function(world, action)
         self.weights[function.__name__] = w_i + self.alpha * delta * f_i # update weight val
         
-    def __r(self, events):
+    def __r(self, events, world):
         ''' @ray
         calculates the reward for a given action
         '''
@@ -322,13 +356,13 @@ class SpecialOpsCharacter(CharacterEntity):
             if event.tpe == Event.CHARACTER_FOUND_EXIT:
                 r += 100
             elif event.tpe == Event.CHARACTER_KILLED_BY_MONSTER:
-                r -= 100
+                r -= 100 
             elif event.tpe == Event.BOMB_HIT_CHARACTER:
-                r -= 100
+                r -= 100 
             elif event.tpe == Event.BOMB_HIT_MONSTER:
                 r += 10
             elif event.tpe == Event.BOMB_HIT_WALL:
-                r += 0.5
+                r += .5 
         r -= 0.001
         return r
         
@@ -349,7 +383,7 @@ class SpecialOpsCharacter(CharacterEntity):
             next_clone, ev = clone.next() # simulate the move and clone the next world
             if next_clone.me(self) is None:
                 # terminal state, q = r
-                q = self.__r(ev)
+                q = self.__r(ev, world)
             else:
                 q = self.__q(next_clone, (0, 0)) # derive q of new world, don't move though
             if q > self.max_q:
@@ -416,5 +450,20 @@ class SpecialOpsCharacter(CharacterEntity):
             for dy in range(-1, 2): # likewise
                 if self.__within_bounds(world, x + dx, y + dy): # check boundries
                     pairs.append((dx, dy)) # append to list
+        return pairs # return list of pairs (dx, dy)
+
+    def __surrounding_pairs_s(self, world, pos):
+        ''' @Dillon & joe
+        List pairs surrounding the character, including those w/ walls
+        '''
+        pairs = [] # keep list (dx, dy)
+        x = pos[0]
+        y = pos[1]
+        for dx in range(-1, 2): # -1 to 1
+            for dy in range(-1, 2): # likewise
+                if dx == 0 and dy == 0:
+                    continue
+                if self.__within_bounds(world, x + dx, y + dy): # check boundries
+                    pairs.append((x + dx, y + dy)) # append to list
         return pairs # return list of pairs (dx, dy)
         

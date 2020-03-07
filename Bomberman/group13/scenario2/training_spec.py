@@ -23,7 +23,6 @@ eps = 1
 games = 0
 sx = 0; sy = 0
 
-#weights ={'__goal_dist_score': 19.09047063849142, '__bomb_threats': 5.480078816026969, '__distance_to_monster': 8.698416583053438, '__goal_blocked_score': -14.584547361089848}
 
 weights = None
 
@@ -44,7 +43,7 @@ while eps > 0.1 or not training:
 #                                 "S",      
 #                                 3, 5   
 #     ))
-    
+    '''
     g.add_monster(StupidMonster("stupid", # name
                                 "S",      # avatar
                                 3, 5,     # position
@@ -53,7 +52,10 @@ while eps > 0.1 or not training:
                                         "A",          # avatar
                                         3, 13,        # position
                                         2             # detection range
-    ))   
+    ))
+    '''
+
+            
     
     our_char = SpecialOpsCharacter("me","C", sx, sy, eps=0 if not training else eps, weights=weights)
     g.add_character(our_char)
@@ -65,7 +67,7 @@ while eps > 0.1 or not training:
     
     # decrease epsilon
     if eps > 0:
-        eps *= 0.999
+        eps *= 0.99
     elif eps < 0:
         eps = 0
 
